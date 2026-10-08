@@ -3,118 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WASM Python Interpreter</title>
-    <!-- Load Pyodide from CDN -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js"></script>
+    <title>Wasm Python Interpreter Terminal</title>
+    
+    <!-- PyScript CSS and JS Core -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f6f8;
             margin: 0;
-            padding: 16px;
-            background-color: #FFFFFF;
-            color: #000;
+            padding: 24px;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
         }
         h2 {
+            margin-bottom: 8px;
+        }
+        p {
+            color: #666;
             margin-top: 0;
-            font-size: 1.2rem;
+            margin-bottom: 16px;
         }
-        textarea {
-            width: 100%;
-            height: 120px;
-            padding: 8px;
-            box-sizing: border-box;
-            font-family: monospace;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        button {
-            background-color: #2ea44f;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            font-size: 14px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 8px;
-        }
-        button:hover {
-            background-color: #2c974b;
-        }
-        button:disabled {
-            background-color: #94d3a2;
-            cursor: not-allowed;
-        }
-        #output {
-            background: #1e1e1e;
+        /* Custom styling for the PyScript terminal container */
+        py-terminal {
+            display: block;
+            background-color: #1e1e1e;
             color: #dcdcdc;
+            border-radius: 8px;
             padding: 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 13px;
-            white-space: pre-wrap;
-            min-height: 80px;
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 8px;
+            min-height: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
 <body>
 
-    <h2>Python Wasm Console</h2>
-    <textarea id="code">import sys
-print(f"Python version: {sys.version}")
-
-# Example calculation
-x = [i**2 for i in range(10)]
-print("Squares:", x)</textarea>
-    <br>
-    <button id="run-btn" onclick="runPython()" disabled>Loading Python...</button>
-    
-    <div id="output">Initializing WebAssembly runtime...</div>
-
-    <script>
-        let pyodideInstance = null;
-        const outputDiv = document.getElementById("output");
-        const runBtn = document.getElementById("run-btn");
-
-        async function initPyodide() {
-            try {
-                pyodideInstance = await loadPyodide();
-                outputDiv.innerText = "Python ready. Click 'Run Code' to execute.";
-                runBtn.innerText = "Run Code";
-                runBtn.disabled = false;
-            } catch (err) {
-                outputDiv.innerText = "Failed to load Pyodide: " + err;
-            }
-        }
-
-        initPyodide();
-
-        async function runPython() {
-            if (!pyodideInstance) return;
+    <div class="container">
+        <h2>Wasm Python Terminal</h2>
+        <p>A fully interactive Python console running in your browser via PyScript and WebAssembly.</p>
+        
+        <!-- PyScript tag configured with a worker and an interactive terminal -->
+        <script type="py" worker terminal>
+            import sys
+            print(f"Python {sys.version} ready on PyScript/Wasm!\n")
             
-            const code = document.getElementById("code").value;
-            outputDiv.innerText = "Running...";
-
-            try {
-                // Capture standard output
-                pyodideInstance.runPython(`
-                    import io, sys
-                    sys.stdout = io.StringIO()
-                `);
-
-                pyodideInstance.runPython(code);
-                
-                const stdout = pyodideInstance.runPython("sys.stdout.getvalue()");
-                outputDiv.innerText = stdout || "Code executed successfully (no output).";
-            } catch (err) {
-                outputDiv.innerText = err;
-            }
-        }
-    </script>
+            # Interactive input test
+            name = input("What is your name? ")
+            print(f"Hello, {name}! You can write standard Python code here.")
+        </script>
+    </div>
 
 </body>
 </html>
