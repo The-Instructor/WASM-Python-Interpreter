@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Python Interpreter</title>
+    <!-- Load Pyodide from CDN -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 16px;
+            background-color: #FFFFFF;
+            color: #000;
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 8px;
+            box-sizing: border-box;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            background-color: #2ea44f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        button:hover {
+            background-color: #2c974b;
+        }
+        button:disabled {
+            background-color: #94d3a2;
+            cursor: not-allowed;
+        }
+        #output {
+            background: #1e1e1e;
+            color: #dcdcdc;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            min-height: 80px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Python Wasm Console</h2>
+    <textarea id="code">import sys
+print(f"Python version: {sys.version}")
+
+# Example calculation
+x = [i**2 for i in range(10)]
+print("Squares:", x)</textarea>
+    <br>
+    <button id="run-btn" onclick="runPython()" disabled>Loading Python...</button>
+    
+    <div id="output">Initializing WebAssembly runtime...</div>
+
+    <script>
+        let pyodideInstance = null;
+        const outputDiv = document.getElementById("output");
+        const runBtn = document.getElementById("run-btn");
+
+        async function initPyodide() {
+            try {
+                pyodideInstance = await loadPyodide();
+                outputDiv.innerText = "Python ready. Click 'Run Code' to execute.";
+                runBtn.innerText = "Run Code";
+                runBtn.disabled = false;
+            } catch (err) {
+                outputDiv.innerText = "Failed to load Pyodide: " + err;
+            }
+        }
+
+        initPyodide();
+
+        async function runPython() {
+            if (!pyodideInstance) return;
+            
+            const code = document.getElementById("code").value;
+            outputDiv.innerText = "Running...";
+
+            try {
+                // Capture standard output
+                pyodideInstance.runPython(`
+                    import io, sys
+                    sys.stdout = io.StringIO()
+                `);
+
+                pyodideInstance.runPython(code);
+                
+                const stdout = pyodideInstance.runPython("sys.stdout.getvalue()");
+                outputDiv.innerText = stdout || "Code executed successfully (no output).";
+            } catch (err) {
+                outputDiv.innerText = err;
+            }
+        }
+    </script>
+
+</body>
+</html>
