@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wasm Python IDE & Terminal</title>
     
-    <!-- PyScript Stylesheets and Core JS -->
-    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
-    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    <!-- Updated PyScript Stylesheets and Core JS (Latest Release) -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2026.7.2/core.css">
+    <script type="module" src="https://pyscript.net/releases/2026.7.2/core.js"></script>
     
     <style>
         body {
@@ -85,19 +85,19 @@
         <div class="editor-section">
             <div class="section-label">Python Editor</div>
             <textarea id="code-input">import sys
-print(f"Python version: {sys.version}")
+print(f"Running latest Python version: {sys.version}")
 name = input("What is your name? ")
-print(f"Hello, {name}! This is running natively inline.")</textarea>
+print(f"Hello, {name}! Everything is up to date.")</textarea>
             <br>
             <button id="run-btn" onclick="runCustomCode()">Run Code in Terminal</button>
         </div>
 
-        <!-- 2. Terminal Section (Powered by PyScript worker & terminal flags) -->
+        <!-- 2. Terminal Section -->
         <div class="terminal-section">
             <div class="section-label">Terminal Output</div>
             <script type="py" id="my-terminal" worker terminal>
                 import sys
-                print(f"PyScript terminal ready. Type or run scripts above!\n")
+                print(f"PyScript terminal ready (Python {sys.version.split()[0]}). Type or run scripts above!\n")
             </script>
         </div>
     </div>
@@ -105,11 +105,9 @@ print(f"Hello, {name}! This is running natively inline.")</textarea>
     <script>
         async function runCustomCode() {
             const code = document.getElementById("code-input").value;
-            // Get reference to the PyScript terminal element
             const pyTerm = document.getElementById("my-terminal");
             
             if (pyTerm && pyTerm.process) {
-                // Safely stream/execute the custom code straight into the active terminal instance
                 await pyTerm.process(code);
             } else {
                 console.warn("Terminal is still initializing, please wait a moment.");
