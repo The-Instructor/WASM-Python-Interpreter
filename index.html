@@ -168,7 +168,7 @@
             user-select: text;
         }
 
-        /* Terminal Console Pane with Interactive Input Support */
+        /* Terminal Console Pane with Inline Input Support */
         .terminal-pane {
             display: flex;
             flex-direction: column;
@@ -278,14 +278,14 @@
         let pyodide = null;
         let activeInputResolver = null;
 
-        // Initialize Pyodide Wasm Runtime & Bridge inline input
+        // Initialize Pyodide Wasm Runtime & Bridge stream inputs
         async function initWasm() {
             const outputBox = document.getElementById("output-box");
             const runBtn = document.getElementById("run-btn");
             try {
                 pyodide = await loadPyodide();
                 
-                // Register JS bridge for inline console input
+                // Expose JS bridge module to handle input requests cleanly
                 pyodide.registerJsModule("browser_input", {
                     input: async (promptText = "") => {
                         return await requestConsoleInput(promptText);
@@ -300,7 +300,7 @@
             }
         }
 
-        // Manage inline terminal input flow
+        // Manage inline terminal prompt display and input resolution
         function requestConsoleInput(promptText) {
             return new Promise((resolve) => {
                 const outputBox = document.getElementById("output-box");
@@ -380,7 +380,7 @@
             }
         }
 
-        // Execute active Python code securely by reading from VFS via exec()
+        // Execute active Python code securely using module compilation to avoid syntax/indentation errors
         async function runCode() {
             saveCurrentFileContent();
             if (!pyodide) return;
@@ -389,12 +389,12 @@
             outputBox.innerText = `Executing ${currentFile}...\n\n`;
 
             try {
-                // Sync all virtual files into Pyodide VFS so cross-file imports work
+                // Sync all virtual files into Pyodide VFS layer
                 for (let filename in files) {
                     pyodide.FS.writeFile(filename, files[filename].content);
                 }
 
-                // Runner script reads the file directly from VFS via exec() to preserve syntax & indentation
+                // Compile and execute code safely via standard namespace execution
                 let runnerScript = `
 import asyncio
 import io
@@ -411,10 +411,15 @@ async def _workspace_runner():
     import builtins
     builtins.input = async_input
 
+    global_ns = {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}}
+
     try:
         with open(${JSON.stringify(currentFile)}, "r") as f:
-            code_content = f.read()
-        exec(code_content, {"__name__": "__main__"})
+            code_str = f.read()
+        
+        # Compile as module code to gracefully support statements, inputs, and controls
+        compiled_code = compile(code_str, ${JSON.stringify(currentFile)}, "exec")
+        exec(compiled_code, global_ns)
     except Exception:
         import traceback
         traceback.print_exc()
