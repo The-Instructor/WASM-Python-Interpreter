@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wasm & Multi-Language Dev Workspace</title>
+    <title>Python Wasm Workspace</title>
+    
+    <!-- Load Latest Pyodide Wasm Runtime -->
+    <script src="https://cdn.jsdelivr.net/npm/pyodide@0.29.3/full/pyodide.js"></script>
     
     <style>
         :root {
@@ -18,6 +21,7 @@
 
         * {
             box-sizing: border-box;
+            user-select: none;
         }
 
         body {
@@ -32,7 +36,7 @@
             overflow: hidden;
         }
 
-        /* Top Header Toolbar */
+        /* Header Toolbar */
         header {
             height: 48px;
             background-color: var(--panel-bg);
@@ -49,7 +53,7 @@
             gap: 12px;
         }
 
-        select, button {
+        button {
             background-color: #333;
             color: var(--text-color);
             border: 1px solid #444;
@@ -59,7 +63,7 @@
             font-size: 13px;
         }
 
-        select:focus, button:focus {
+        button:focus {
             outline: none;
             border-color: var(--accent-color);
         }
@@ -73,8 +77,12 @@
         button.run-btn:hover {
             background-color: #2c974b;
         }
+        button.run-btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
 
-        /* Scalable 3-Column Workspace Layout */
+        /* 3-Column Resizable Workspace Layout */
         .workspace {
             display: grid;
             grid-template-columns: 220px 6px 1fr 6px 380px;
@@ -114,7 +122,7 @@
             background-color: var(--accent-color);
         }
 
-        /* 1. File System Sidebar */
+        /* File List Sidebar */
         .file-list {
             list-style: none;
             padding: 0;
@@ -139,7 +147,7 @@
             border-left-color: var(--accent-color);
         }
 
-        /* 2. Middle Editor Pane */
+        /* Editor Pane */
         .editor-container {
             flex: 1;
             display: flex;
@@ -157,9 +165,10 @@
             resize: none;
             outline: none;
             line-height: 1.5;
+            user-select: text;
         }
 
-        /* 3. Right Console Pane */
+        /* Terminal Console Pane */
         .console-container {
             flex: 1;
             background-color: #1e1e1e;
@@ -169,28 +178,24 @@
             overflow-y: auto;
             white-space: pre-wrap;
             word-break: break-all;
+            user-select: text;
         }
     </style>
 </head>
 <body>
 
-    <!-- Top Navigation & Controls Toolbar -->
+    <!-- Top Action Toolbar -->
     <header>
         <div class="toolbar-group">
-            <strong>Dev Workspace</strong>
-            <select id="lang-select" onchange="switchLanguage()">
-                <option value="python">Python</option>
-                <option value="cpp">C++</option>
-                <option value="java">Java</option>
-            </select>
+            <strong>Python Wasm Workspace</strong>
         </div>
         <div class="toolbar-group">
             <button onclick="createNewFile()">+ New File</button>
-            <button class="run-btn" onclick="runCode()">▶ Run Code</button>
+            <button class="run-btn" id="run-btn" onclick="runCode()" disabled>Loading Python...</button>
         </div>
     </header>
 
-    <!-- Scalable 3-Column Resizable Layout -->
+    <!-- Workspace Grid Container -->
     <div class="workspace" id="workspace">
         
         <!-- Left: File System Explorer -->
@@ -206,40 +211,49 @@
         <div class="pane editor-container">
             <div class="pane-header">
                 <span id="current-filename">main.py</span>
-                <span id="file-lang-badge" style="font-size: 10px; color: #888;">python</span>
+                <span style="font-size: 10px; color: #888;">python</span>
             </div>
-            <textarea id="code-editor" placeholder="Write your code here..."></textarea>
+            <textarea id="code-editor" placeholder="Write your Python code here..."></textarea>
         </div>
 
         <!-- Splitter 2 -->
         <div class="splitter" id="splitter-2"></div>
 
-        <!-- Right: Console / Terminal Output -->
+        <!-- Right: Console Output -->
         <div class="pane">
             <div class="pane-header">Terminal Output</div>
-            <div class="console-container" id="output-box">Workspace loaded successfully. Select a file and click "Run Code".</div>
+            <div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
         </div>
 
     </div>
 
     <script>
-        // Real Virtual File System state
+        // Virtual File System State
         let files = {
             "main.py": {
-                lang: "python",
-                content: 'import sys\n\nprint("Hello from Python!")\nprint(f"Python Version: {sys.version.split()[0]}")\n\n# Calculate squares\nfor i in range(5):\n    print(f"{i} squared = {i**2}")'
+                content: 'import sys\nimport math_utils\n\nprint("Hello from Wasm Python Workspace!")\nprint(f"Python Version: {sys.version.split()[0]}\\n")\n\n# Test cross-module import\nres = math_utils.factorial(5)\nprint(f"Computed factorials via module: 5! = {res}")'
             },
-            "main.cpp": {
-                lang: "cpp",
-                content: '#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << "Hello from C++!" << endl;\n    for(int i=0; i<5; i++) {\n        cout << "Count: " << i << endl;\n    }\n    return 0;\n}'
-            },
-            "Main.java": {
-                lang: "java",
-                content: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello from Java!");\n        for(int i=0; i<5; i++) {\n            System.out.println("Iteration: " + i);\n        }\n    }\n}'
+            "math_utils.py": {
+                content: '# Reusable math helper module\n\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n'
             }
         };
 
         let currentFile = "main.py";
+        let pyodide = null;
+
+        // Initialize Pyodide Wasm Runtime
+        async function initWasm() {
+            const outputBox = document.getElementById("output-box");
+            const runBtn = document.getElementById("run-btn");
+            try {
+                pyodide = await loadPyodide();
+                outputBox.innerText = "Python WebAssembly environment ready. Click 'Run Code'.";
+                runBtn.innerText = "▶ Run Code";
+                runBtn.disabled = false;
+            } catch (err) {
+                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err;
+            }
+        }
 
         function initFileSystem() {
             const listEl = document.getElementById("file-list");
@@ -253,9 +267,6 @@
             }
             document.getElementById("code-editor").value = files[currentFile].content;
             document.getElementById("current-filename").innerText = currentFile;
-            let lang = files[currentFile].lang;
-            document.getElementById("lang-select").value = lang;
-            document.getElementById("file-lang-badge.innerText") = lang;
         }
 
         function saveCurrentFileContent() {
@@ -270,76 +281,65 @@
             initFileSystem();
         }
 
-        function switchLanguage() {
-            saveCurrentFileContent();
-            let newLang = document.getElementById("lang-select").value;
-            files[currentFile].lang = newLang;
-
-            // Update extension automatically
-            let ext = newLang === "python" ? "py" : (newLang === "cpp" ? "cpp" : "java");
-            let baseName = currentFile.split('.')[0];
-            if (newLang === "java") baseName = "Main"; // Java convention
-            let newFilename = `${baseName}.${ext}`;
-
-            if (newFilename !== currentFile) {
-                files[newFilename] = files[currentFile];
-                delete files[currentFile];
-                currentFile = newFilename;
-                initFileSystem();
-            }
-        }
-
         function createNewFile() {
             saveCurrentFileContent();
-            let name = prompt("Enter new filename (e.g. script.py, solution.cpp, Program.java):", "script.py");
-            if (name && !files[name]) {
-                let ext = name.split('.').pop().toLowerCase();
-                let lang = ext === "py" ? "python" : (ext === "cpp" ? "cpp" : "java");
-                files[name] = { lang: lang, content: `// New ${lang} file` };
+            let name = prompt("Enter new Python filename (e.g., script.py):", "script.py");
+            if (name) {
+                if (!name.endsWith(".py")) name += ".py";
+                if (!files[name]) {
+                    files[name] = { content: `# New Python script: ${name}\nprint("Hello from ${name}!")` };
+                }
                 selectFile(name);
             }
         }
 
-        // Real code execution engine integration via secure API backend
+        // Execute active Python code inside browser Wasm with virtual filesystem mapping
         async function runCode() {
             saveCurrentFileContent();
-            let file = files[currentFile];
+            if (!pyodide) return;
+
             let outputBox = document.getElementById("output-box");
-            
-            outputBox.innerText = `Compiling and executing ${currentFile}...\n`;
+            outputBox.innerText = `Executing ${currentFile}...\n\n`;
 
             try {
-                let response = await fetch("https://emkc.org/api/v2/piston/execute", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        language: file.lang,
-                        version: "*",
-                        files: [
-                            {
-                                name: currentFile,
-                                content: file.content
-                            }
-                        ]
-                    })
-                });
-
-                let data = await response.json();
-                if (data.run) {
-                    let resultOutput = data.run.output || data.run.stdout || data.run.stderr || "Program executed with no output.";
-                    outputBox.innerText = resultOutput;
-                } else {
-                    outputBox.innerText = "Execution Error: " + JSON.stringify(data, null, 2);
+                // Sync all virtual files into Pyodide's virtual filesystem memory layer
+                for (let filename in files) {
+                    pyodide.FS.writeFile(filename, files[filename].content);
                 }
+
+                // Capture standard output streams
+                pyodide.runPython(`
+                    import io, sys
+                    sys.stdout = io.StringIO()
+                    sys.stderr = io.StringIO()
+                `);
+
+                // Execute the code for the active file
+                pyodide.runPython(files[currentFile].content);
+
+                let stdout = pyodide.runPython("sys.stdout.getvalue()");
+                let stderr = pyodide.runPython("sys.stderr.getvalue()");
+
+                let result = "";
+                if (stdout) result += stdout;
+                if (stderr) result += "\n[stderr]:\n" + stderr;
+
+                outputBox.innerText = result || "Program executed successfully with no output.";
             } catch (err) {
-                outputBox.innerText = "Network Error: Failed to connect to execution sandbox. Check your internet connection.";
+                outputBox.innerText = err;
             }
         }
 
-        // Resizable Splitter Logic for Workspace Layout
+        // Robust State-Based Resizable Splitter Logic
         function setupSplitters() {
             const workspace = document.getElementById("workspace");
             let activeSplitter = null;
+            let leftWidth = 220;
+            let rightWidth = 380;
+
+            function updateGrid() {
+                workspace.style.gridTemplateColumns = `${leftWidth}px 6px 1fr 6px ${rightWidth}px`;
+            }
 
             document.getElementById("splitter-1").onmousedown = (e) => { activeSplitter = 1; e.preventDefault(); };
             document.getElementById("splitter-2").onmousedown = (e) => { activeSplitter = 2; e.preventDefault(); };
@@ -349,14 +349,11 @@
                 let rect = workspace.getBoundingClientRect();
 
                 if (activeSplitter === 1) {
-                    let leftWidth = Math.max(150, Math.min(400, e.clientX - rect.left));
-                    let currentCols = workspace.style.gridTemplateColumns.split(' ');
-                    workspace.style.gridTemplateColumns = `${leftWidth}px 6px 1fr 6px ${currentCols[4]}`;
+                    leftWidth = Math.max(150, Math.min(450, e.clientX - rect.left));
                 } else if (activeSplitter === 2) {
-                    let rightWidth = Math.max(200, Math.min(600, rect.right - e.clientX));
-                    let currentCols = workspace.style.gridTemplateColumns.split(' ');
-                    workspace.style.gridTemplateColumns = `${currentCols[0]} 6px 1fr 6px ${rightWidth}px`;
+                    rightWidth = Math.max(250, Math.min(600, rect.right - e.clientX));
                 }
+                updateGrid();
             };
 
             window.onmouseup = () => { activeSplitter = null; };
@@ -365,6 +362,7 @@
         window.onload = () => {
             initFileSystem();
             setupSplitters();
+            initWasm();
         };
     </script>
 </body>
