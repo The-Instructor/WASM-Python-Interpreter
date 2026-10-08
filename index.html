@@ -271,11 +271,13 @@
                 runBtn.innerText = "▶ Run Code";
                 runBtn.disabled = false;
             } catch (err) {
-                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err;
+                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err + "\n\nMake sure you have an active internet connection to load the CDN script.";
+                runBtn.innerText = "Load Failed";
             }
         }
 
-        function requestConsoleInput(promptText) {
+        // Bridge function called by Python's input() replacement
+        window.requestConsoleInput = function(promptText) {
             return new Promise((resolve) => {
                 const outputBox = document.getElementById("output-box");
                 const inputRow = document.getElementById("console-input-row");
@@ -299,7 +301,7 @@
                     resolve(value);
                 };
             });
-        }
+        };
 
         function submitConsoleInput() {
             const inputField = document.getElementById("console-input-field");
@@ -339,7 +341,7 @@
         function selectFile(filename) {
             saveCurrentFileContent();
             currentFile = filename;
-                initFileSystem();
+            initFileSystem();
         }
 
         function createNewFile() {
@@ -369,58 +371,45 @@
                     pyodide.FS.writeFile(filename, files[filename].content);
                 }
 
-                // Setup clean async execution context mapping python input() to the DOM console bar
+                // Clean async runner script that injects builtins.input correctly
                 let runnerScript = `
-import asyncio
 import io
 import sys
 from js import requestConsoleInput
 
-class AsyncInputStdIn:
-    def readline(self):
-        # yields control back to JS event loop until Enter is pressed
-        fut = requestConsoleInput("")
-        # Pyodide handles JS Promise resolution in async execution context
-        return asyncio.ensure_future(fut)
-
-# We wrap execution via an async wrapper function so `await` handles inputs natively
-async def _execute_user_code():
+async def _workspace_runner():
     old_stdout = sys.stdout
     old_stderr = sys.stderr
-    old_stdin = sys.stdin
 
     sys.stdout = io.StringIO()
     sys.stderr = io.StringIO()
 
-    async def custom_input(prompt=""):
-        if prompt:
-            print(prompt, end="", flush=True)
-        val = await requestConsoleInput("")
-        return val
+    async def async_input(prompt_text=""):
+        if prompt_text:
+            print(prompt_text, end="", flush=True)
+        return await requestConsoleInput("")
 
     import builtins
-    builtins.input = custom_input
+    builtins.input = async_input
 
     try:
         with open(${JSON.stringify(currentFile)}, "r") as f:
             code_content = f.read()
         
-        # Compile and execute user script in global scope
         compiled = compile(code_content, ${JSON.stringify(currentFile)}, "exec")
         exec(compiled, {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}})
     except Exception:
         import traceback
         traceback.print_exc()
-    
-    out = sys.stdout.getvalue()
-    err = sys.stderr.getvalue()
-    
+
+    stdout_val = sys.stdout.getvalue()
+    stderr_val = sys.stderr.getvalue()
+
     sys.stdout = old_stdout
     sys.stderr = old_stderr
-    sys.stdin = old_stdin
-    return out, err
+    return stdout_val, stderr_val
 
-await _execute_user_code()
+await _workspace_runner()
 `;
 
                 let [stdout, stderr] = await pyodide.runPythonAsync(runnerScript);
