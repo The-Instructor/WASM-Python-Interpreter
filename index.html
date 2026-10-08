@@ -380,7 +380,7 @@
             }
         }
 
-        // Execute active Python code with async wrapper support for `input()`
+        // Execute active Python code securely by reading from VFS via exec()
         async function runCode() {
             saveCurrentFileContent();
             if (!pyodide) return;
@@ -389,15 +389,12 @@
             outputBox.innerText = `Executing ${currentFile}...\n\n`;
 
             try {
-                // Sync all virtual files into Pyodide VFS
+                // Sync all virtual files into Pyodide VFS so cross-file imports work
                 for (let filename in files) {
                     pyodide.FS.writeFile(filename, files[filename].content);
                 }
 
-                // Construct an async wrapper around the user script to seamlessly handle input() and output streams
-                let rawCode = files[currentFile].content;
-                let indentedCode = rawCode.split('\n').map(line => '    ' + line).join('\n');
-                
+                // Runner script reads the file directly from VFS via exec() to preserve syntax & indentation
                 let runnerScript = `
 import asyncio
 import io
@@ -415,7 +412,9 @@ async def _workspace_runner():
     builtins.input = async_input
 
     try:
-${indentedCode}
+        with open(${JSON.stringify(currentFile)}, "r") as f:
+            code_content = f.read()
+        exec(code_content, {"__name__": "__main__"})
     except Exception:
         import traceback
         traceback.print_exc()
