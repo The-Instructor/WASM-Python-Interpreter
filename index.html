@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Wasm Workspace</title>
     
-    <!-- Load Official Pyodide Wasm Runtime -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
-    
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -36,7 +33,6 @@
             overflow: hidden;
         }
 
-        /* Header Toolbar */
         header {
             height: 48px;
             background-color: var(--panel-bg);
@@ -82,7 +78,6 @@
             cursor: not-allowed;
         }
 
-        /* 3-Column Resizable Workspace Layout */
         .workspace {
             display: grid;
             grid-template-columns: 220px 6px 1fr 6px 380px;
@@ -112,7 +107,6 @@
             align-items: center;
         }
 
-        /* Resizable Splitter Bars */
         .splitter {
             background-color: var(--border-color);
             cursor: col-resize;
@@ -122,7 +116,6 @@
             background-color: var(--accent-color);
         }
 
-        /* File List Sidebar */
         .file-list {
             list-style: none;
             padding: 0;
@@ -147,7 +140,6 @@
             border-left-color: var(--accent-color);
         }
 
-        /* Editor Pane */
         .editor-container {
             flex: 1;
             display: flex;
@@ -168,7 +160,6 @@
             user-select: text;
         }
 
-        /* Terminal Console Pane with Inline Input Support */
         .terminal-pane {
             display: flex;
             flex-direction: column;
@@ -215,7 +206,6 @@
 </head>
 <body>
 
-    <!-- Top Action Toolbar -->
     <header>
         <div class="toolbar-group">
             <strong>Python Wasm Workspace</strong>
@@ -226,19 +216,14 @@
         </div>
     </header>
 
-    <!-- Workspace Grid Container -->
     <div class="workspace" id="workspace">
-        
-        <!-- Left: File System Explorer -->
         <div class="pane">
             <div class="pane-header">Files</div>
             <ul class="file-list" id="file-list"></ul>
         </div>
 
-        <!-- Splitter 1 -->
         <div class="splitter" id="splitter-1"></div>
 
-        <!-- Middle: Code Editor -->
         <div class="pane editor-container">
             <div class="pane-header">
                 <span id="current-filename">main.py</span>
@@ -247,10 +232,8 @@
             <textarea id="code-editor" placeholder="Write your Python code here..."></textarea>
         </div>
 
-        <!-- Splitter 2 -->
         <div class="splitter" id="splitter-2"></div>
 
-        <!-- Right: Console Output & Inline Input Terminal -->
         <div class="pane terminal-pane">
             <div class="pane-header">Terminal Output</div>
             <div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
@@ -260,14 +243,12 @@
                 <button onclick="submitConsoleInput()" style="padding: 4px 10px; font-size: 11px;">Send</button>
             </div>
         </div>
-
     </div>
 
     <script>
-        // Virtual File System State
         let files = {
             "main.py": {
-                content: '# Test interactive console input()\nname = input("What is your name? ")\nprint(f"Hello, {name}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
+                content: '# Test standard synchronous input()\nname = input("What is your name? ")\nprint(f"Hello, {name}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
             },
             "math_utils.py": {
                 content: '# Reusable math helper module\n\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n'
@@ -275,65 +256,120 @@
         };
 
         let currentFile = "main.py";
-        let pyodide = null;
-        let activeInputResolver = null;
+        let worker = null;
 
-        // Initialize Pyodide Wasm Runtime & Bridge stream inputs
-        async function initWasm() {
-            const outputBox = document.getElementById("output-box");
-            const runBtn = document.getElementById("run-btn");
-            try {
-                pyodide = await loadPyodide();
-                
-                // Expose JS bridge module to handle input requests cleanly
-                pyodide.registerJsModule("browser_input", {
-                    input: async (promptText = "") => {
-                        return await requestConsoleInput(promptText);
+        // Initialize Web Worker with Pyodide and SharedArrayBuffer synchronization
+        const workerCode = `
+            importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js");
+
+            let pyodide = null;
+            let sab = null;
+            let int32View = null;
+
+            async function init() {
+                pyodide = await loadPyodide({
+                    stdin: () => {
+                        postMessage({ type: "REQUEST_INPUT" });
+                        Atomics.wait(int32View, 0, 0);
+                        let len = int32View[0];
+                        int32View[0] = 0;
+                        
+                        let dataView = new Uint8Array(sab, 4, len);
+                        let decoder = new TextDecoder();
+                        return decoder.decode(dataView) + "\\n";
+                    },
+                    stdout: (text) => {
+                        postMessage({ type: "STDOUT", text: text + "\\n" });
+                    },
+                    stderr: (text) => {
+                        postMessage({ type: "STDERR", text: text + "\\n" });
                     }
                 });
+                postMessage({ type: "READY" });
+            }
 
+            init();
+
+            onmessage = async (e) => {
+                const msg = e.data;
+                if (msg.type === "INIT_SAB") {
+                    sab = msg.sab;
+                    int32View = new Int32Array(sab);
+                } else if (msg.type === "RUN") {
+                    const { filename, codeFiles } = msg;
+                    try {
+                        for (let fname in codeFiles) {
+                            pyodide.FS.writeFile(fname, codeFiles[fname]);
+                        }
+                        await pyodide.runPythonAsync(\`
+                            import traceback
+                            try:
+                                with open("\${filename}", "r") as f:
+                                    exec(f.read(), {"__name__": "__main__"})
+                            except Exception:
+                                traceback.print_exc()
+                        \`);
+                        postMessage({ type: "DONE" });
+                    } catch (err) {
+                        postMessage({ type: "STDERR", text: err.toString() + "\\n" });
+                        postMessage({ type: "DONE" });
+                    }
+                }
+            };
+        `;
+
+        const blob = new Blob([workerCode], { type: "application/javascript" });
+        worker = new Worker(URL.createObjectURL(blob));
+
+        const sab = new SharedArrayBuffer(1024);
+        const int32View = new Int32Array(sab);
+        worker.postMessage({ type: "INIT_SAB", sab: sab });
+
+        worker.onmessage = (e) => {
+            const msg = e.data;
+            const outputBox = document.getElementById("output-box");
+            const runBtn = document.getElementById("run-btn");
+
+            if (msg.type === "READY") {
                 outputBox.innerText = "Python WebAssembly environment ready. Click 'Run Code'.";
                 runBtn.innerText = "▶ Run Code";
                 runBtn.disabled = false;
-            } catch (err) {
-                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err;
+            } else if (msg.type === "STDOUT" || msg.type === "STDERR") {
+                outputBox.innerText += msg.text;
+                outputBox.scrollTop = outputBox.scrollHeight;
+            } else if (msg.type === "REQUEST_INPUT") {
+                showConsoleInput();
+            } else if (msg.type === "DONE") {
+                runBtn.disabled = false;
+                runBtn.innerText = "▶ Run Code";
             }
-        }
+        };
 
-        // Manage inline terminal prompt display and input resolution
-        function requestConsoleInput(promptText) {
-            return new Promise((resolve) => {
-                const outputBox = document.getElementById("output-box");
-                const inputRow = document.getElementById("console-input-row");
-                const inputField = document.getElementById("console-input-field");
-                const promptLabel = document.getElementById("input-prompt-label");
-
-                if (promptText) {
-                    outputBox.innerText += promptText;
-                    outputBox.scrollTop = outputBox.scrollHeight;
-                }
-
-                promptLabel.innerText = promptText || "input:";
-                inputRow.style.display = "flex";
-                inputField.value = "";
-                inputField.focus();
-
-                activeInputResolver = (value) => {
-                    outputBox.innerText += value + "\n";
-                    outputBox.scrollTop = outputBox.scrollHeight;
-                    inputRow.style.display = "none";
-                    resolve(value);
-                };
-            });
+        function showConsoleInput() {
+            const inputRow = document.getElementById("console-input-row");
+            const inputField = document.getElementById("console-input-field");
+            inputRow.style.display = "flex";
+            inputField.value = "";
+            inputField.focus();
         }
 
         function submitConsoleInput() {
             const inputField = document.getElementById("console-input-field");
-            if (activeInputResolver) {
-                let resolver = activeInputResolver;
-                activeInputResolver = null;
-                resolver(inputField.value);
-            }
+            const inputRow = document.getElementById("console-input-row");
+            const outputBox = document.getElementById("output-box");
+            const val = inputField.value;
+
+            outputBox.innerText += val + "\n";
+            outputBox.scrollTop = outputBox.scrollHeight;
+            inputRow.style.display = "none";
+
+            let encoder = new TextEncoder();
+            let bytes = encoder.encode(val);
+            let targetView = new Uint8Array(sab, 4, bytes.length);
+            targetView.set(bytes);
+
+            int32View[0] = bytes.length;
+            Atomics.notify(int32View, 0, 1);
         }
 
         function handleInputKey(event) {
@@ -380,69 +416,27 @@
             }
         }
 
-        // Execute active Python code securely using module compilation to avoid syntax/indentation errors
-        async function runCode() {
+        function runCode() {
             saveCurrentFileContent();
-            if (!pyodide) return;
+            const outputBox = document.getElementById("output-box");
+            const runBtn = document.getElementById("run-btn");
 
-            let outputBox = document.getElementById("output-box");
             outputBox.innerText = `Executing ${currentFile}...\n\n`;
+            runBtn.disabled = true;
+            runBtn.innerText = "Running...";
 
-            try {
-                // Sync all virtual files into Pyodide VFS layer
-                for (let filename in files) {
-                    pyodide.FS.writeFile(filename, files[filename].content);
-                }
-
-                // Compile and execute code safely via standard namespace execution
-                let runnerScript = `
-import asyncio
-import io
-import sys
-from browser_input import input as js_input
-
-async def _workspace_runner():
-    sys.stdout = io.StringIO()
-    sys.stderr = io.StringIO()
-    
-    async def async_input(prompt_text=""):
-        return await js_input(prompt_text)
-
-    import builtins
-    builtins.input = async_input
-
-    global_ns = {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}}
-
-    try:
-        with open(${JSON.stringify(currentFile)}, "r") as f:
-            code_str = f.read()
-        
-        # Compile as module code to gracefully support statements, inputs, and controls
-        compiled_code = compile(code_str, ${JSON.stringify(currentFile)}, "exec")
-        exec(compiled_code, global_ns)
-    except Exception:
-        import traceback
-        traceback.print_exc()
-
-    return sys.stdout.getvalue(), sys.stderr.getvalue()
-
-await _workspace_runner()
-`;
-
-                let [stdout, stderr] = await pyodide.runPythonAsync(runnerScript);
-
-                let result = "";
-                if (stdout) result += stdout;
-                if (stderr) result += "\n[stderr]:\n" + stderr;
-
-                outputBox.innerText += "\n" + (result || "Program executed successfully with no output.");
-                outputBox.scrollTop = outputBox.scrollHeight;
-            } catch (err) {
-                outputBox.innerText += "\n[Execution Error]:\n" + err;
+            let codeFiles = {};
+            for (let fname in files) {
+                codeFiles[fname] = files[fname].content;
             }
+
+            worker.postMessage({
+                type: "RUN",
+                filename: currentFile,
+                codeFiles: codeFiles
+            });
         }
 
-        // Resizable Splitter Logic
         function setupSplitters() {
             const workspace = document.getElementById("workspace");
             let activeSplitter = null;
@@ -474,7 +468,6 @@ await _workspace_runner()
         window.onload = () => {
             initFileSystem();
             setupSplitters();
-            initWasm();
         };
     </script>
 </body>
