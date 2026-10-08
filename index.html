@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Wasm Workspace</title>
     
+    <!-- Load Official Pyodide Wasm Runtime -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
+    
     <style>
         :root {
             --bg-color: #1e1e1e;
@@ -248,7 +251,7 @@
     <script>
         let files = {
             "main.py": {
-                content: '# Test standard synchronous input()\nname = input("What is your name? ")\nprint(f"Hello, {name}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
+                content: '# Test interactive console input()\nname = input("What is your name? ")\nprint(f"Hello, {name}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
             },
             "math_utils.py": {
                 content: '# Reusable math helper module\n\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n'
@@ -256,120 +259,55 @@
         };
 
         let currentFile = "main.py";
-        let worker = null;
+        let pyodide = null;
+        let activeInputResolver = null;
 
-        // Initialize Web Worker with Pyodide and SharedArrayBuffer synchronization
-        const workerCode = `
-            importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js");
-
-            let pyodide = null;
-            let sab = null;
-            let int32View = null;
-
-            async function init() {
-                pyodide = await loadPyodide({
-                    stdin: () => {
-                        postMessage({ type: "REQUEST_INPUT" });
-                        Atomics.wait(int32View, 0, 0);
-                        let len = int32View[0];
-                        int32View[0] = 0;
-                        
-                        let dataView = new Uint8Array(sab, 4, len);
-                        let decoder = new TextDecoder();
-                        return decoder.decode(dataView) + "\\n";
-                    },
-                    stdout: (text) => {
-                        postMessage({ type: "STDOUT", text: text + "\\n" });
-                    },
-                    stderr: (text) => {
-                        postMessage({ type: "STDERR", text: text + "\\n" });
-                    }
-                });
-                postMessage({ type: "READY" });
-            }
-
-            init();
-
-            onmessage = async (e) => {
-                const msg = e.data;
-                if (msg.type === "INIT_SAB") {
-                    sab = msg.sab;
-                    int32View = new Int32Array(sab);
-                } else if (msg.type === "RUN") {
-                    const { filename, codeFiles } = msg;
-                    try {
-                        for (let fname in codeFiles) {
-                            pyodide.FS.writeFile(fname, codeFiles[fname]);
-                        }
-                        await pyodide.runPythonAsync(\`
-                            import traceback
-                            try:
-                                with open("\${filename}", "r") as f:
-                                    exec(f.read(), {"__name__": "__main__"})
-                            except Exception:
-                                traceback.print_exc()
-                        \`);
-                        postMessage({ type: "DONE" });
-                    } catch (err) {
-                        postMessage({ type: "STDERR", text: err.toString() + "\\n" });
-                        postMessage({ type: "DONE" });
-                    }
-                }
-            };
-        `;
-
-        const blob = new Blob([workerCode], { type: "application/javascript" });
-        worker = new Worker(URL.createObjectURL(blob));
-
-        const sab = new SharedArrayBuffer(1024);
-        const int32View = new Int32Array(sab);
-        worker.postMessage({ type: "INIT_SAB", sab: sab });
-
-        worker.onmessage = (e) => {
-            const msg = e.data;
+        async function initWasm() {
             const outputBox = document.getElementById("output-box");
             const runBtn = document.getElementById("run-btn");
-
-            if (msg.type === "READY") {
+            try {
+                pyodide = await loadPyodide();
                 outputBox.innerText = "Python WebAssembly environment ready. Click 'Run Code'.";
                 runBtn.innerText = "▶ Run Code";
                 runBtn.disabled = false;
-            } else if (msg.type === "STDOUT" || msg.type === "STDERR") {
-                outputBox.innerText += msg.text;
-                outputBox.scrollTop = outputBox.scrollHeight;
-            } else if (msg.type === "REQUEST_INPUT") {
-                showConsoleInput();
-            } else if (msg.type === "DONE") {
-                runBtn.disabled = false;
-                runBtn.innerText = "▶ Run Code";
+            } catch (err) {
+                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err;
             }
-        };
+        }
 
-        function showConsoleInput() {
-            const inputRow = document.getElementById("console-input-row");
-            const inputField = document.getElementById("console-input-field");
-            inputRow.style.display = "flex";
-            inputField.value = "";
-            inputField.focus();
+        function requestConsoleInput(promptText) {
+            return new Promise((resolve) => {
+                const outputBox = document.getElementById("output-box");
+                const inputRow = document.getElementById("console-input-row");
+                const inputField = document.getElementById("console-input-field");
+                const promptLabel = document.getElementById("input-prompt-label");
+
+                if (promptText) {
+                    outputBox.innerText += promptText;
+                    outputBox.scrollTop = outputBox.scrollHeight;
+                }
+
+                promptLabel.innerText = promptText || "input:";
+                inputRow.style.display = "flex";
+                inputField.value = "";
+                inputField.focus();
+
+                activeInputResolver = (value) => {
+                    outputBox.innerText += value + "\n";
+                    outputBox.scrollTop = outputBox.scrollHeight;
+                    inputRow.style.display = "none";
+                    resolve(value);
+                };
+            });
         }
 
         function submitConsoleInput() {
             const inputField = document.getElementById("console-input-field");
-            const inputRow = document.getElementById("console-input-row");
-            const outputBox = document.getElementById("output-box");
-            const val = inputField.value;
-
-            outputBox.innerText += val + "\n";
-            outputBox.scrollTop = outputBox.scrollHeight;
-            inputRow.style.display = "none";
-
-            let encoder = new TextEncoder();
-            let bytes = encoder.encode(val);
-            let targetView = new Uint8Array(sab, 4, bytes.length);
-            targetView.set(bytes);
-
-            int32View[0] = bytes.length;
-            Atomics.notify(int32View, 0, 1);
+            if (activeInputResolver) {
+                let resolver = activeInputResolver;
+                activeInputResolver = null;
+                resolver(inputField.value);
+            }
         }
 
         function handleInputKey(event) {
@@ -401,7 +339,7 @@
         function selectFile(filename) {
             saveCurrentFileContent();
             currentFile = filename;
-            initFileSystem();
+                initFileSystem();
         }
 
         function createNewFile() {
@@ -416,25 +354,86 @@
             }
         }
 
-        function runCode() {
+        async function runCode() {
             saveCurrentFileContent();
+            if (!pyodide) return;
+
             const outputBox = document.getElementById("output-box");
             const runBtn = document.getElementById("run-btn");
-
             outputBox.innerText = `Executing ${currentFile}...\n\n`;
             runBtn.disabled = true;
             runBtn.innerText = "Running...";
 
-            let codeFiles = {};
-            for (let fname in files) {
-                codeFiles[fname] = files[fname].content;
-            }
+            try {
+                for (let filename in files) {
+                    pyodide.FS.writeFile(filename, files[filename].content);
+                }
 
-            worker.postMessage({
-                type: "RUN",
-                filename: currentFile,
-                codeFiles: codeFiles
-            });
+                // Setup clean async execution context mapping python input() to the DOM console bar
+                let runnerScript = `
+import asyncio
+import io
+import sys
+from js import requestConsoleInput
+
+class AsyncInputStdIn:
+    def readline(self):
+        # yields control back to JS event loop until Enter is pressed
+        fut = requestConsoleInput("")
+        # Pyodide handles JS Promise resolution in async execution context
+        return asyncio.ensure_future(fut)
+
+# We wrap execution via an async wrapper function so `await` handles inputs natively
+async def _execute_user_code():
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    old_stdin = sys.stdin
+
+    sys.stdout = io.StringIO()
+    sys.stderr = io.StringIO()
+
+    async def custom_input(prompt=""):
+        if prompt:
+            print(prompt, end="", flush=True)
+        val = await requestConsoleInput("")
+        return val
+
+    import builtins
+    builtins.input = custom_input
+
+    try:
+        with open(${JSON.stringify(currentFile)}, "r") as f:
+            code_content = f.read()
+        
+        # Compile and execute user script in global scope
+        compiled = compile(code_content, ${JSON.stringify(currentFile)}, "exec")
+        exec(compiled, {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}})
+    except Exception:
+        import traceback
+        traceback.print_exc()
+    
+    out = sys.stdout.getvalue()
+    err = sys.stderr.getvalue()
+    
+    sys.stdout = old_stdout
+    sys.stderr = old_stderr
+    sys.stdin = old_stdin
+    return out, err
+
+await _execute_user_code()
+`;
+
+                let [stdout, stderr] = await pyodide.runPythonAsync(runnerScript);
+
+                if (stdout) outputBox.innerText += stdout;
+                if (stderr) outputBox.innerText += "\n[stderr]:\n" + stderr;
+                if (!stdout && !stderr) outputBox.innerText += "\nProgram executed successfully with no output.";
+            } catch (err) {
+                outputBox.innerText += "\n[Execution Error]:\n" + err;
+            } finally {
+                runBtn.disabled = false;
+                runBtn.innerText = "▶ Run Code";
+            }
         }
 
         function setupSplitters() {
@@ -468,6 +467,7 @@
         window.onload = () => {
             initFileSystem();
             setupSplitters();
+            initWasm();
         };
     </script>
 </body>
