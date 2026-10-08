@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wasm Python IDE & Terminal</title>
-    <!-- Load Pyodide from CDN -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js"></script>
+    
+    <!-- PyScript Stylesheets and Core JS -->
+    <link rel="stylesheet" href="https://pyscript.net/releases/2024.1.1/core.css">
+    <script type="module" src="https://pyscript.net/releases/2024.1.1/core.js"></script>
+    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -35,7 +38,7 @@
         }
         textarea {
             width: 100%;
-            height: 160px;
+            height: 140px;
             padding: 12px;
             box-sizing: border-box;
             font-family: "Courier New", Courier, monospace;
@@ -60,96 +63,56 @@
         button:hover {
             background-color: #2c974b;
         }
-        button:disabled {
-            background-color: #94d3a2;
-            cursor: not-allowed;
-        }
-        #terminal {
+        /* Style for the PyScript interactive terminal component */
+        py-terminal {
+            display: block;
             background-color: #1e1e1e;
             color: #dcdcdc;
-            padding: 16px;
             border-radius: 6px;
-            font-family: "Courier New", Courier, monospace;
-            font-size: 13px;
-            white-space: pre-wrap;
-            min-height: 140px;
-            max-height: 250px;
-            overflow-y: auto;
+            padding: 8px;
+            min-height: 160px;
             border: 1px solid #333;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2>Wasm Python Interpreter</h2>
+        <h2>Wasm Python IDE & Terminal</h2>
 
         <!-- 1. Editor Section -->
         <div class="editor-section">
             <div class="section-label">Python Editor</div>
             <textarea id="code-input">import sys
-print(f"Python version: {sys.version}\n")
-
-# Test standard input and output
+print(f"Python version: {sys.version}")
 name = input("What is your name? ")
-print(f"Hello, {name}! Your Wasm environment is fully functional.")</textarea>
+print(f"Hello, {name}! This is running natively inline.")</textarea>
             <br>
-            <button id="run-btn" onclick="executePython()" disabled>Loading Python...</button>
+            <button id="run-btn" onclick="runCustomCode()">Run Code in Terminal</button>
         </div>
 
-        <!-- 2. Terminal Section -->
+        <!-- 2. Terminal Section (Powered by PyScript worker & terminal flags) -->
         <div class="terminal-section">
             <div class="section-label">Terminal Output</div>
-            <div id="terminal">Initializing WebAssembly runtime...</div>
+            <script type="py" id="my-terminal" worker terminal>
+                import sys
+                print(f"PyScript terminal ready. Type or run scripts above!\n")
+            </script>
         </div>
     </div>
 
     <script>
-        let pyodideInstance = null;
-        const terminal = document.getElementById("terminal");
-        const runBtn = document.getElementById("run-btn");
-
-        async function initPyodide() {
-            try {
-                pyodideInstance = await loadPyodide();
-                
-                // Map Python's input() to JS prompt dialog for seamless web interactivity
-                pyodideInstance.runPython(`
-                    from js import prompt
-                    def browser_input(text=""):
-                        return prompt(text) or ""
-                    __builtins__.input = browser_input
-                `);
-
-                terminal.innerText = "Python ready. Click 'Run Code' above to execute.";
-                runBtn.innerText = "Run Code";
-                runBtn.disabled = false;
-            } catch (err) {
-                terminal.innerText = "Failed to initialize Pyodide: " + err;
-            }
-        }
-
-        initPyodide();
-
-        async function executePython() {
-            if (!pyodideInstance) return;
-
+        async function runCustomCode() {
             const code = document.getElementById("code-input").value;
-            terminal.innerText = "Running script...\n";
-
-            try {
-                // Capture standard output
-                pyodideInstance.runPython(`
-                    import io, sys
-                    sys.stdout = io.StringIO()
-                `);
-
-                pyodideInstance.runPython(code);
-
-                const stdout = pyodideInstance.runPython("sys.stdout.getvalue()");
-                terminal.innerText = stdout ? stdout : "Script executed successfully (no output).";
-            } catch (err) {
-                terminal.innerText = err;
+            // Get reference to the PyScript terminal element
+            const pyTerm = document.getElementById("my-terminal");
+            
+            if (pyTerm && pyTerm.process) {
+                // Safely stream/execute the custom code straight into the active terminal instance
+                await pyTerm.process(code);
+            } else {
+                console.warn("Terminal is still initializing, please wait a moment.");
             }
         }
     </script>
