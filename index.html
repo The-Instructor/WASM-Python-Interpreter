@@ -19,6 +19,7 @@
             --text-color: #dcdcdc;
             --accent-color: #0e639c;
             --success-color: #2ea44f;
+            --danger-color: #a1260d;
             --hover-color: #2a2d2e;
         }
 
@@ -82,6 +83,16 @@
         button.run-btn:disabled {
             background-color: #555;
             cursor: not-allowed;
+        }
+
+        button.danger-btn {
+            background-color: #333;
+            color: #f85149;
+            border-color: #555;
+        }
+        button.danger-btn:hover {
+            background-color: #442222;
+            border-color: #f85149;
         }
 
         .workspace {
@@ -189,31 +200,6 @@
             word-break: break-all;
             user-select: text;
         }
-        .console-input-row {
-            display: none;
-            padding: 8px 14px;
-            background-color: #252526;
-            border-top: 1px solid var(--border-color);
-            align-items: center;
-            gap: 8px;
-        }
-        .console-input-row span {
-            font-family: "Courier New", Courier, monospace;
-            font-size: 13px;
-            color: #4ec9b0;
-            white-space: nowrap;
-        }
-        .console-input-row input {
-            flex: 1;
-            background-color: #1e1e1e;
-            border: 1px solid var(--accent-color);
-            color: var(--text-color);
-            font-family: "Courier New", Courier, monospace;
-            font-size: 13px;
-            padding: 4px 8px;
-            outline: none;
-            user-select: text;
-        }
     </style>
     
     <!-- CodeMirror Python Mode & Theme Scripts -->
@@ -221,7 +207,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/seti.min.css">
 </head><body><header>
 <div class="toolbar-group"><strong>Python Wasm Workspace</strong></div>
-<div class="toolbar-group"><button onclick="createNewFile()">+ New File</button> <button class="run-btn" id="run-btn" disabled="disabled" onclick="runCode()">Loading Python...</button></div>
+<div class="toolbar-group"><button onclick="createNewFile()">+ New File</button> <button class="danger-btn" onclick="deleteCurrentFile()">🗑 Remove File</button> <button class="run-btn" id="run-btn" disabled="disabled" onclick="runCode()">Loading Python...</button></div>
 </header>
 <div class="workspace" id="workspace">
 <div class="pane">
@@ -231,27 +217,22 @@
 <div class="splitter" id="splitter-1"></div>
 <div class="pane editor-container">
 <div class="pane-header"><span id="current-filename">main.py</span> <span style="font-size: 10px; color: #888;">python</span></div>
-<!-- Replaced raw textarea with CodeMirror target --> <textarea id="code-editor"></textarea></div>
+<!-- CodeMirror Target --> <textarea id="code-editor"></textarea></div>
 <div class="splitter" id="splitter-2"></div>
 <div class="pane terminal-pane">
 <div class="pane-header">Terminal Output</div>
 <div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
-<div class="console-input-row" id="console-input-row"><span id="input-prompt-label">Input:</span> <input type="text" id="console-input-field" placeholder="Type your input and press Enter..." onkeydown="handleInputKey(event)"> <button style="padding: 4px 10px; font-size: 11px;" onclick="submitConsoleInput()">Send</button></div>
 </div>
 </div>
 <p><script>
         let files = {
             "main.py": {
-                content: '# Test interactive console input()\nname = input("What is your name? ")\nprint(f"Hello, {{name}}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
-            },
-            "math_utils.py": {
-                content: '# Reusable math helper module\n\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n'
+                content: '# Welcome to Python Wasm Workspace\nname = "Student"\nprint(f"Hello, {{name}}!")\n\nage = 20\nprint(f"Next year you will be {age + 1} years old.")'
             }
         };
 
         let currentFile = "main.py";
         let pyodide = null;
-        let activeInputResolver = null;
         let codeMirrorEditor = null;
 
         async function initWasm() {
@@ -268,48 +249,6 @@
             }
         }
 
-        // Bridge function called by Python's input() replacement
-        window.requestConsoleInput = function(promptText) {
-            return new Promise((resolve) => {
-                const outputBox = document.getElementById("output-box");
-                const inputRow = document.getElementById("console-input-row");
-                const inputField = document.getElementById("console-input-field");
-                const promptLabel = document.getElementById("input-prompt-label");
-
-                if (promptText) {
-                    outputBox.innerText += promptText;
-                    outputBox.scrollTop = outputBox.scrollHeight;
-                }
-
-                promptLabel.innerText = promptText || "input:";
-                inputRow.style.display = "flex";
-                inputField.value = "";
-                inputField.focus();
-
-                activeInputResolver = (value) => {
-                    outputBox.innerText += value + "\n";
-                    outputBox.scrollTop = outputBox.scrollHeight;
-                    inputRow.style.display = "none";
-                    resolve(value);
-                };
-            });
-        };
-
-        function submitConsoleInput() {
-            const inputField = document.getElementById("console-input-field");
-            if (activeInputResolver) {
-                let resolver = activeInputResolver;
-                activeInputResolver = null;
-                resolver(inputField.value);
-            }
-        }
-
-        function handleInputKey(event) {
-            if (event.key === "Enter") {
-                submitConsoleInput();
-            }
-        }
-
         function initFileSystem() {
             const listEl = document.getElementById("file-list");
             listEl.innerHTML = "";
@@ -321,10 +260,10 @@
                 listEl.appendChild(li);
             }
             
-            if (codeMirrorEditor) {
+            if (codeMirrorEditor && files[currentFile]) {
                 codeMirrorEditor.setValue(files[currentFile].content);
+                document.getElementById("current-filename").innerText = currentFile;
             }
-            document.getElementById("current-filename").innerText = currentFile;
         }
 
         function saveCurrentFileContent() {
@@ -335,19 +274,36 @@
 
         function selectFile(filename) {
             saveCurrentFileContent();
-            currentFile = filename;
-            initFileSystem();
+            if (files[filename]) {
+                currentFile = filename;
+                initFileSystem();
+            }
         }
 
         function createNewFile() {
             saveCurrentFileContent();
-            let name = prompt("Enter new Python filename (e.g., script.py):", "script.py");
+            let name = prompt("Enter filename (e.g., script.py or plain.txt):", "newFile.ext");
             if (name) {
-                if (!name.endsWith(".py")) name += ".py";
-                if (!files[name]) {
-                    files[name] = { content: `# New Python script: ${{name}}\nprint("Hello from ${{name}}!")` };
+                name = name.trim();
+                if (name && !files[name]) {
+                    files[name] = { content: `` };
                 }
                 selectFile(name);
+            }
+        }
+
+        function deleteCurrentFile() {
+            // Prevent deleting the main entry point file
+            if (currentFile === "main.py") {
+                alert("Cannot delete 'main.py' as it is the primary execution script.");
+                return;
+            }
+
+            if (confirm(`Are you sure you want to delete '${{currentFile}}'?`)) {
+                delete files[currentFile];
+                // Fall back to main.py
+                currentFile = "main.py";
+                initFileSystem();
             }
         }
 
@@ -369,41 +325,29 @@
                 let runnerScript = `
 import io
 import sys
-from js import requestConsoleInput
 
-async def _workspace_runner():
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
+old_stdout = sys.stdout
+old_stderr = sys.stderr
 
-    sys.stdout = io.StringIO()
-    sys.stderr = io.StringIO()
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
 
-    async def async_input(prompt_text=""):
-        if prompt_text:
-            print(prompt_text, end="", flush=True)
-        return await requestConsoleInput("")
+try:
+    with open(${JSON.stringify(currentFile)}, "r") as f:
+        code_content = f.read()
+    
+    compiled = compile(code_content, ${JSON.stringify(currentFile)}, "exec")
+    exec(compiled, {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}})
+except Exception:
+    import traceback
+    traceback.print_exc()
 
-    import builtins
-    builtins.input = async_input
+stdout_val = sys.stdout.getvalue()
+stderr_val = sys.stderr.getvalue()
 
-    try:
-        with open(${JSON.stringify(currentFile)}, "r") as f:
-            code_content = f.read()
-        
-        compiled = compile(code_content, ${JSON.stringify(currentFile)}, "exec")
-        exec(compiled, {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}})
-    except Exception:
-        import traceback
-        traceback.print_exc()
-
-    stdout_val = sys.stdout.getvalue()
-    stderr_val = sys.stderr.getvalue()
-
-    sys.stdout = old_stdout
-    sys.stderr = old_stderr
-    return stdout_val, stderr_val
-
-await _workspace_runner()
+sys.stdout = old_stdout
+sys.stderr = old_stderr
+stdout_val, stderr_val
 `;
 
                 let [stdout, stderr] = await pyodide.runPythonAsync(runnerScript);
@@ -427,7 +371,6 @@ await _workspace_runner()
 
             function updateGrid() {
                 workspace.style.gridTemplateColumns = `${{leftWidth}}px 6px 1fr 6px ${{rightWidth}}px`;
-                // Refresh CodeMirror layout when splitters adjust panel widths
                 if (codeMirrorEditor) codeMirrorEditor.refresh();
             }
 
@@ -450,7 +393,6 @@ await _workspace_runner()
         }
 
         window.onload = () => {
-            // Initialize CodeMirror on the text area
             codeMirrorEditor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
                 mode: "python",
                 theme: "seti",
