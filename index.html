@@ -1,12 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Wasm Workspace</title>
     
     <!-- Load Official Pyodide Wasm Runtime -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
+    
+    <!-- Load CodeMirror 6 Bundle from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
     
     <style>
         :root {
@@ -148,19 +151,25 @@
             display: flex;
             flex-direction: column;
             background-color: var(--bg-color);
+            position: relative;
         }
-        textarea {
+        
+        /* CodeMirror Custom Styling to match IDE theme */
+        .CodeMirror {
             flex: 1;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            border: none;
-            padding: 16px;
+            height: auto !important;
+            background-color: var(--bg-color) !important;
+            color: var(--text-color) !important;
             font-family: "Courier New", Courier, monospace;
             font-size: 14px;
-            resize: none;
-            outline: none;
             line-height: 1.5;
-            user-select: text;
+        }
+        .CodeMirror-gutters {
+            background-color: var(--panel-bg) !important;
+            border-right: 1px solid var(--border-color) !important;
+        }
+        .CodeMirror-linenumber {
+            color: #666 !important;
         }
 
         .terminal-pane {
@@ -206,52 +215,34 @@
             user-select: text;
         }
     </style>
-</head>
-<body>
-
-    <header>
-        <div class="toolbar-group">
-            <strong>Python Wasm Workspace</strong>
-        </div>
-        <div class="toolbar-group">
-            <button onclick="createNewFile()">+ New File</button>
-            <button class="run-btn" id="run-btn" onclick="runCode()" disabled>Loading Python...</button>
-        </div>
-    </header>
-
-    <div class="workspace" id="workspace">
-        <div class="pane">
-            <div class="pane-header">Files</div>
-            <ul class="file-list" id="file-list"></ul>
-        </div>
-
-        <div class="splitter" id="splitter-1"></div>
-
-        <div class="pane editor-container">
-            <div class="pane-header">
-                <span id="current-filename">main.py</span>
-                <span style="font-size: 10px; color: #888;">python</span>
-            </div>
-            <textarea id="code-editor" placeholder="Write your Python code here..."></textarea>
-        </div>
-
-        <div class="splitter" id="splitter-2"></div>
-
-        <div class="pane terminal-pane">
-            <div class="pane-header">Terminal Output</div>
-            <div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
-            <div class="console-input-row" id="console-input-row">
-                <span id="input-prompt-label">Input:</span>
-                <input type="text" id="console-input-field" placeholder="Type your input and press Enter..." onkeydown="handleInputKey(event)">
-                <button onclick="submitConsoleInput()" style="padding: 4px 10px; font-size: 11px;">Send</button>
-            </div>
-        </div>
-    </div>
-
-    <script>
+    
+    <!-- CodeMirror Python Mode & Theme Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/seti.min.css">
+</head><body><header>
+<div class="toolbar-group"><strong>Python Wasm Workspace</strong></div>
+<div class="toolbar-group"><button onclick="createNewFile()">+ New File</button> <button class="run-btn" id="run-btn" disabled="disabled" onclick="runCode()">Loading Python...</button></div>
+</header>
+<div class="workspace" id="workspace">
+<div class="pane">
+<div class="pane-header">Files</div>
+<ul class="file-list" id="file-list"></ul>
+</div>
+<div class="splitter" id="splitter-1"></div>
+<div class="pane editor-container">
+<div class="pane-header"><span id="current-filename">main.py</span> <span style="font-size: 10px; color: #888;">python</span></div>
+<!-- Replaced raw textarea with CodeMirror target --> <textarea id="code-editor"></textarea></div>
+<div class="splitter" id="splitter-2"></div>
+<div class="pane terminal-pane">
+<div class="pane-header">Terminal Output</div>
+<div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
+<div class="console-input-row" id="console-input-row"><span id="input-prompt-label">Input:</span> <input type="text" id="console-input-field" placeholder="Type your input and press Enter..." onkeydown="handleInputKey(event)"> <button style="padding: 4px 10px; font-size: 11px;" onclick="submitConsoleInput()">Send</button></div>
+</div>
+</div>
+<p><script>
         let files = {
             "main.py": {
-                content: '# Test interactive console input()\nname = input("What is your name? ")\nprint(f"Hello, {name}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
+                content: '# Test interactive console input()\nname = input("What is your name? ")\nprint(f"Hello, {{name}}!")\n\nage = int(input("How old are you? "))\nprint(f"Next year you will be {age + 1} years old.")'
             },
             "math_utils.py": {
                 content: '# Reusable math helper module\n\ndef factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n'
@@ -261,6 +252,7 @@
         let currentFile = "main.py";
         let pyodide = null;
         let activeInputResolver = null;
+        let codeMirrorEditor = null;
 
         async function initWasm() {
             const outputBox = document.getElementById("output-box");
@@ -324,17 +316,20 @@
             for (let filename in files) {
                 let li = document.createElement("li");
                 li.className = `file-item ${filename === currentFile ? 'active' : ''}`;
-                li.innerHTML = `<span>${filename}</span>`;
+                li.innerHTML = `<span>${{filename}}</span>`;
                 li.onclick = () => selectFile(filename);
                 listEl.appendChild(li);
             }
-            document.getElementById("code-editor").value = files[currentFile].content;
+            
+            if (codeMirrorEditor) {
+                codeMirrorEditor.setValue(files[currentFile].content);
+            }
             document.getElementById("current-filename").innerText = currentFile;
         }
 
         function saveCurrentFileContent() {
-            if (files[currentFile]) {
-                files[currentFile].content = document.getElementById("code-editor").value;
+            if (files[currentFile] && codeMirrorEditor) {
+                files[currentFile].content = codeMirrorEditor.getValue();
             }
         }
 
@@ -350,7 +345,7 @@
             if (name) {
                 if (!name.endsWith(".py")) name += ".py";
                 if (!files[name]) {
-                    files[name] = { content: `# New Python script: ${name}\nprint("Hello from ${name}!")` };
+                    files[name] = { content: `# New Python script: ${{name}}\nprint("Hello from ${{name}}!")` };
                 }
                 selectFile(name);
             }
@@ -362,7 +357,7 @@
 
             const outputBox = document.getElementById("output-box");
             const runBtn = document.getElementById("run-btn");
-            outputBox.innerText = `Executing ${currentFile}...\n\n`;
+            outputBox.innerText = `Executing ${{currentFile}}...\n\n`;
             runBtn.disabled = true;
             runBtn.innerText = "Running...";
 
@@ -371,7 +366,6 @@
                     pyodide.FS.writeFile(filename, files[filename].content);
                 }
 
-                // Clean async runner script that injects builtins.input correctly
                 let runnerScript = `
 import io
 import sys
@@ -432,7 +426,9 @@ await _workspace_runner()
             let rightWidth = 380;
 
             function updateGrid() {
-                workspace.style.gridTemplateColumns = `${leftWidth}px 6px 1fr 6px ${rightWidth}px`;
+                workspace.style.gridTemplateColumns = `${{leftWidth}}px 6px 1fr 6px ${{rightWidth}}px`;
+                // Refresh CodeMirror layout when splitters adjust panel widths
+                if (codeMirrorEditor) codeMirrorEditor.refresh();
             }
 
             document.getElementById("splitter-1").onmousedown = (e) => { activeSplitter = 1; e.preventDefault(); };
@@ -454,10 +450,19 @@ await _workspace_runner()
         }
 
         window.onload = () => {
+            // Initialize CodeMirror on the text area
+            codeMirrorEditor = CodeMirror.fromTextArea(document.getElementById("code-editor"), {
+                mode: "python",
+                theme: "seti",
+                lineNumbers: true,
+                indentUnit: 4,
+                tabSize: 4,
+                lineWrapping: false,
+                autofocus: true
+            });
+
             initFileSystem();
             setupSplitters();
             initWasm();
         };
-    </script>
-</body>
-</html>
+    </script></p></body></html>
