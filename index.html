@@ -4,9 +4,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Wasm Workspace</title>
     
-    <!-- Load Official Pyodide Wasm Runtime -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
-    
     <!-- Load CodeMirror 6 Bundle from CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
@@ -83,6 +80,16 @@
         button.run-btn:disabled {
             background-color: #555;
             cursor: not-allowed;
+        }
+
+        button.stop-btn {
+            background-color: #d12424;
+            color: white;
+            font-weight: bold;
+            border: none;
+        }
+        button.stop-btn:hover {
+            background-color: #b51a1a;
         }
 
         button.danger-btn {
@@ -207,7 +214,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/seti.min.css">
 </head><body><header>
 <div class="toolbar-group"><strong>Python Wasm Workspace</strong></div>
-<div class="toolbar-group"><button onclick="createNewFile()">+ New File</button> <button class="danger-btn" onclick="deleteCurrentFile()">🗑 Remove File</button> <button class="run-btn" id="run-btn" disabled="disabled" onclick="runCode()">Loading Python...</button></div>
+<div class="toolbar-group"><button onclick="createNewFile()">+ New File</button> <button class="danger-btn" onclick="deleteCurrentFile()">🗑 Remove File</button> <button class="run-btn" id="run-btn" disabled="disabled" onclick="handleRunButtonClick()">Loading Python Worker...</button></div>
 </header>
 <div class="workspace" id="workspace">
 <div class="pane">
@@ -221,32 +228,100 @@
 <div class="splitter" id="splitter-2"></div>
 <div class="pane terminal-pane">
 <div class="pane-header">Terminal Output</div>
-<div class="console-container" id="output-box">Initializing WebAssembly Python environment...</div>
+<div class="console-container" id="output-box">Initializing background WebAssembly worker...</div>
 </div>
 </div>
 <p><script>
         let files = {
             "main.py": {
-                content: '# Welcome to Python Wasm Workspace\nname = "Student"\nprint(f"Hello, {{name}}!")\n\nage = 20\nprint(f"Next year you will be {age + 1} years old.")'
+                content: '# Test real-time streaming and loops\nimport time\n\nfor i in range(3):\n    print(f"Countdown: {{i}}")\n    time.sleep(0.5)\n\nprint("Finished successfully!")\n'
             }
         };
 
         let currentFile = "main.py";
-        let pyodide = null;
+        let worker = null;
         let codeMirrorEditor = null;
+        let isRunning = false;
 
-        async function initWasm() {
-            const outputBox = document.getElementById("output-box");
-            const runBtn = document.getElementById("run-btn");
-            try {
+        // Construct the Web Worker environment inline via a Blob URL
+        const workerScript = `
+            importScripts("https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js");
+
+            let pyodide = null;
+
+            async function initPyodideWorker() {
                 pyodide = await loadPyodide();
-                outputBox.innerText = "Python WebAssembly environment ready. Click 'Run Code'.";
-                runBtn.innerText = "▶ Run Code";
-                runBtn.disabled = false;
-            } catch (err) {
-                outputBox.innerText = "Failed to load Pyodide Wasm runtime: " + err + "\n\nMake sure you have an active internet connection to load the CDN script.";
-                runBtn.innerText = "Load Failed";
+                
+                // Stream stdout/stderr instantly back to main thread
+                pyodide.setStdout({
+                    batched: (msg) => postMessage({ type: 'stdout', data: msg + '\\n' })
+                });
+                pyodide.setStderr({
+                    batched: (msg) => postMessage({ type: 'stderr', data: '\\n[stderr]: ' + msg + '\\n' })
+                });
+
+                postMessage({ type: 'ready' });
             }
+
+            initPyodideWorker();
+
+            self.onmessage = async (e) => {
+                if (e.data.cmd === 'run') {
+                    const { files, currentFile } = e.data;
+                    try {
+                        for (let filename in files) {
+                            pyodide.FS.writeFile(filename, files[filename]);
+                        }
+
+                        let codeRunner = \`
+import sys
+import io
+
+try:
+    with open("\${{currentFile}}", "r") as f:
+        code_content = f.read()
+    
+    compiled = compile(code_content, "\${{currentFile}}", "exec")
+    exec(compiled, {"__name__": "__main__", "__file__": "\${{currentFile}}"})
+except Exception:
+    import traceback
+    traceback.print_exc()
+\`;
+                        await pyodide.runPythonAsync(codeRunner);
+                        postMessage({ type: 'done' });
+                    } catch (err) {
+                        postMessage({ type: 'error', data: '\\n[Execution Error]:\\n' + err });
+                    }
+                }
+            };
+        `;
+
+        function spawnWorker() {
+            const blob = new Blob([workerScript], { type: "application/javascript" });
+            const workerUrl = URL.createObjectURL(blob);
+            worker = new Worker(workerUrl);
+
+            worker.onmessage = (e) => {
+                const msg = e.data;
+                if (msg.type === 'ready') {
+                    const outputBox = document.getElementById("output-box");
+                    const runBtn = document.getElementById("run-btn");
+                    outputBox.innerText = "Python background worker ready. Click 'Run Code'.";
+                    runBtn.innerText = "▶ Run Code";
+                    runBtn.disabled = false;
+                } else if (msg.type === 'stdout' || msg.type === 'stderr' || msg.type === 'error') {
+                    appendOutput(msg.data);
+                } else if (msg.type === 'done') {
+                    appendOutput("\nProgram executed successfully.");
+                    resetRunButton();
+                }
+            };
+        }
+
+        function appendOutput(text) {
+            const outputBox = document.getElementById("output-box");
+            outputBox.innerText += text;
+            outputBox.scrollTop = outputBox.scrollHeight;
         }
 
         function initFileSystem() {
@@ -282,18 +357,17 @@
 
         function createNewFile() {
             saveCurrentFileContent();
-            let name = prompt("Enter filename (e.g., script.py or plain.txt):", "newFile.ext");
+            let name = prompt("Enter filename (e.g., script.py or plain.txt):", "script.py");
             if (name) {
                 name = name.trim();
                 if (name && !files[name]) {
-                    files[name] = { content: `` };
+                    files[name] = { content: `# File: ${{name}}\n` };
                 }
                 selectFile(name);
             }
         }
 
         function deleteCurrentFile() {
-            // Prevent deleting the main entry point file
             if (currentFile === "main.py") {
                 alert("Cannot delete 'main.py' as it is the primary execution script.");
                 return;
@@ -301,66 +375,61 @@
 
             if (confirm(`Are you sure you want to delete '${{currentFile}}'?`)) {
                 delete files[currentFile];
-                // Fall back to main.py
                 currentFile = "main.py";
                 initFileSystem();
             }
         }
 
-        async function runCode() {
-            saveCurrentFileContent();
-            if (!pyodide) return;
+        function handleRunButtonClick() {
+            if (isRunning) {
+                stopCode();
+            } else {
+                runCode();
+            }
+        }
 
+        function stopCode() {
+            if (worker) {
+                worker.terminate(); // Instantly kills any infinite loop or stuck thread
+            }
+            appendOutput("\n\n[Execution Terminated by User]");
+            resetRunButton();
+            spawnWorker(); // Spin up a fresh worker thread
+        }
+
+        function resetRunButton() {
+            isRunning = false;
+            const runBtn = document.getElementById("run-btn");
+            runBtn.className = "run-btn";
+            runBtn.innerText = "▶ Run Code";
+            runBtn.disabled = false;
+        }
+
+        function runCode() {
+            saveCurrentFileContent();
+            if (!worker || isRunning) return;
+
+            isRunning = true;
             const outputBox = document.getElementById("output-box");
             const runBtn = document.getElementById("run-btn");
+
+            runBtn.className = "stop-btn";
+            runBtn.innerText = "⏹ Stop";
+            runBtn.disabled = false;
+
             outputBox.innerText = `Executing ${{currentFile}}...\n\n`;
-            runBtn.disabled = true;
-            runBtn.innerText = "Running...";
 
-            try {
-                for (let filename in files) {
-                    pyodide.FS.writeFile(filename, files[filename].content);
-                }
-
-                let runnerScript = `
-import io
-import sys
-
-old_stdout = sys.stdout
-old_stderr = sys.stderr
-
-sys.stdout = io.StringIO()
-sys.stderr = io.StringIO()
-
-try:
-    with open(${JSON.stringify(currentFile)}, "r") as f:
-        code_content = f.read()
-    
-    compiled = compile(code_content, ${JSON.stringify(currentFile)}, "exec")
-    exec(compiled, {"__name__": "__main__", "__file__": ${JSON.stringify(currentFile)}})
-except Exception:
-    import traceback
-    traceback.print_exc()
-
-stdout_val = sys.stdout.getvalue()
-stderr_val = sys.stderr.getvalue()
-
-sys.stdout = old_stdout
-sys.stderr = old_stderr
-stdout_val, stderr_val
-`;
-
-                let [stdout, stderr] = await pyodide.runPythonAsync(runnerScript);
-
-                if (stdout) outputBox.innerText += stdout;
-                if (stderr) outputBox.innerText += "\n[stderr]:\n" + stderr;
-                if (!stdout && !stderr) outputBox.innerText += "\nProgram executed successfully with no output.";
-            } catch (err) {
-                outputBox.innerText += "\n[Execution Error]:\n" + err;
-            } finally {
-                runBtn.disabled = false;
-                runBtn.innerText = "▶ Run Code";
+            // Extract file contents into a plain dictionary for the worker
+            let filePayload = {};
+            for (let f in files) {
+                filePayload[f] = files[f].content;
             }
+
+            worker.postMessage({
+                cmd: 'run',
+                files: filePayload,
+                currentFile: currentFile
+            });
         }
 
         function setupSplitters() {
@@ -405,6 +474,6 @@ stdout_val, stderr_val
 
             initFileSystem();
             setupSplitters();
-            initWasm();
+            spawnWorker();
         };
     </script></p></body></html>
