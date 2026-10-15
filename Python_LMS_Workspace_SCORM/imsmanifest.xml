@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="PythonWasmWorkspace" version="1.2"
+<manifest identifier="PythonAssignmentTemplate" version="1.2"
           xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
           xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -11,14 +11,15 @@
   </metadata>
   <organizations default="python_workspace_org">
     <organization identifier="python_workspace_org">
-      <title>Python Browser Workspace</title>
+      <title>Python Assignment Workspace</title>
       <item identifier="item_1" identifierref="resource_1">
-        <title>Python Lab Environment</title>
+        <title>Python Lab Activity</title>
       </item>
     </organization>
   </organizations>
   <resources>
     <resource identifier="resource_1" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <file href="imsmanifest.xml"/>
       <file href="index.html"/>
       <file href="css/styles.css"/>
       <file href="js/app.js"/>
