@@ -17,10 +17,12 @@ self.onmessage = async (e) => {
     if (e.data.cmd === 'run') {
         try {
             const files = e.data.files;
+            // Synchronize all virtual files into Pyodide's MEMFS
             for (const [filename, content] of Object.entries(files)) {
                 pyodide.FS.writeFile(filename, content);
             }
 
+            // Execute the designated entrypoint script
             await pyodide.runPythonAsync(files[e.data.entrypoint]);
             postMessage({ type: 'done' });
         } catch (err) {
