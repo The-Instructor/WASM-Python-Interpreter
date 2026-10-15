@@ -7,13 +7,13 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- xterm.js stylesheet -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
-    <!-- Marked.js for Markdown Instructions -->
+    <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <header id="toolbar">
         <div class="toolbar-left">
-            <button id="toggle-sidebar-btn" class="tool-btn" onclick="toggleSidebar()" title="Toggle File Tree">📁</button>
+            <button id="toggle-sidebar-btn" class="tool-btn" onclick="toggleSidebar()" title="Toggle File Tree">📁 Files</button>
             <div class="brand">Python Lab Workspace</div>
         </div>
         <div class="toolbar-right">
@@ -26,34 +26,32 @@
         <!-- LEFT: File Tree Sidebar -->
         <aside id="file-sidebar">
             <div class="sidebar-header">
-                <span>Files</span>
+                <span>Explorer</span>
                 <button id="new-file-btn" onclick="createNewFile()">+ File</button>
             </div>
             <ul id="file-list" class="file-list"></ul>
         </aside>
 
+        <!-- Sidebar Splitter Handle -->
+        <div class="splitter" id="sidebar-splitter"></div>
+
         <!-- CENTER: Editor (Top) & Terminal (Bottom) -->
         <section id="center-pane">
             <div id="editor-container">
-                <textarea id="code-editor" oninput="updateActiveFileContent()" placeholder="Select a file to edit..."></textarea>
+                <textarea id="code-editor" oninput="updateActiveFileContent()" placeholder="Select a file from the sidebar..."></textarea>
             </div>
+            <!-- Vertical Splitter Handle -->
+            <div class="splitter-horizontal" id="vertical-splitter"></div>
             <div id="terminal-container"></div>
         </section>
+
+        <!-- Instructions Splitter Handle -->
+        <div class="splitter" id="instructions-splitter"></div>
 
         <!-- RIGHT: Assignment Instructions (Markdown) -->
         <aside id="instructions-pane">
             <div class="instructions-header">Assignment Instructions</div>
-            <div id="instructions-content" class="markdown-body">
-                <!-- ================================================= -->
-                <!-- INSTRUCTOR PLACEHOLDER: Insert Markdown text here -->
-                <!-- ================================================= -->
-                # Lab Overview
-                Welcome to your Python assignment. Read the instructions below, write your code in the designated files, and click **Run Code** to test your solution.
-
-                ### Objectives
-                1. Complete the required functions.
-                2. Verify output in the terminal below.
-                </div>
+            <div id="instructions-content" class="markdown-body">Loading instructions...</div>
         </aside>
     </main>
 
