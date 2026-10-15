@@ -8,58 +8,85 @@ const term = new Terminal({
 term.open(document.getElementById('terminal-container'));
 term.writeln('\x1b[33mSystem: Loading background worker runtime...\x1b[0m\r\n');
 
-// =========================================================================
-// INSTRUCTOR PLACEHOLDER: Define starter files and virtual workspace here.
-// Use comments to indicate editable zones vs. danger zones.
-// =========================================================================
-let virtualFiles = {
-    "main.py": 
-`# ==========================================
-# DANGER ZONE: DO NOT MODIFY BELOW THIS LINE
-# Automated test runner and environment hooks.
-# ==========================================
-import sys
-
-def _run_tests():
-    print("--- Running Test Suite ---")
-    try:
-        from solution import calculate_total
-        assert calculate_total([10, 20, 30]) == 60
-        print("Test 1 Passed: calculate_total()")
-    except Exception as e:
-        print(f"Test Failed: {e}")
-
-# ==========================================
-# STUDENT EDITABLE ZONE: Complete your code below
-# ==========================================
-if __name__ == "__main__":
-    print("Starting Assignment execution...")
-    _run_tests()
-`,
-    "solution.py":
-`# ==========================================
-# STUDENT EDITABLE ZONE
-# Implement your solution functions here.
-# ==========================================
-
-def calculate_total(items):
-    """
-    TODO: Implement logic to sum up items and return the total.
-    """
-    # Write your code here
-    return 0
-`
-};
-
-let activeFile = "main.py";
+// State Management
+let virtualFiles = {};
+let activeFile = null;
 let worker = null;
 let isRunning = false;
 
-// Render Markdown instructions on load
-document.addEventListener("DOMContentLoaded", () => {
-    const rawMarkdown = document.getElementById("instructions-content").innerHTML;
-    document.getElementById("instructions-content").innerHTML = marked.parse(rawMarkdown);
+// Initialize Workspace on Load
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadInstructions();
+    await discoverManifestFiles();
+    initSplitters();
 });
+
+// Load Instructions from instructions.md
+async function loadInstructions() {
+    try {
+        const response = await fetch('instructions.md');
+        if (!response.ok) throw new Error("Could not load instructions.md");
+        const markdownText = await response.text();
+        document.getElementById("instructions-content").innerHTML = marked.parse(markdownText);
+    } catch (err) {
+        document.getElementById("instructions-content").innerHTML = `<p style="color: #d12424;">Error loading instructions: ${err.message}</p>`;
+    }
+}
+
+// Auto-discover starter files declared in imsmanifest.xml
+async function discoverManifestFiles() {
+    try {
+        const response = await fetch('imsmanifest.xml');
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "application/xml");
+        
+        const fileTags = xmlDoc.getElementsByTagName("file");
+        const discovered = [];
+
+        for (let tag of fileTags) {
+            let href = tag.getAttribute("href");
+            // Skip core system files
+            if (href && !['imsmanifest.xml', 'index.html', 'instructions.md', 'css/styles.css', 'js/app.js', 'js/worker.js'].includes(href)) {
+                discovered.push(href);
+            }
+        }
+
+        if (discovered.length === 0) {
+            // Default fallback if no starter files declared yet
+            virtualFiles["main.py"] = `# Write your Python code here\nprint("Hello, World!")\n`;
+        } else {
+            for (let path of discovered) {
+                // Fetch content of each declared starter file
+                try {
+                    const fileRes = await fetch(path);
+                    if (fileRes.ok) {
+                        const content = await fileRes.text();
+                        // Strip folder prefix if any (e.g., store clean filename)
+                        const filename = path.split('/').pop();
+                        virtualFiles[filename] = content;
+                    }
+                } catch (e) {
+                    console.warn(`Could not fetch starter file: ${path}`, e);
+                }
+            }
+        }
+
+        // Set initial active file
+        const fileNames = Object.keys(virtualFiles);
+        activeFile = fileNames.length > 0 ? fileNames[0] : "main.py";
+        
+        initFileExplorer();
+        spawnWorker();
+
+    } catch (err) {
+        console.error("Manifest discovery failed:", err);
+        virtualFiles["main.py"] = `# Error loading manifest\nprint("Hello World")`;
+        activeFile = "main.py";
+        initFileExplorer();
+        spawnWorker();
+    }
+}
 
 function initFileExplorer() {
     const listEl = document.getElementById('file-list');
@@ -74,16 +101,14 @@ function initFileExplorer() {
         span.onclick = () => switchFile(filename);
         li.appendChild(span);
 
-        if (filename !== 'main.py' && filename !== 'solution.py') {
-            const delBtn = document.createElement('button');
-            delBtn.className = 'file-delete';
-            delBtn.innerText = '✕';
-            delBtn.onclick = (e) => {
-                e.stopPropagation();
-                deleteFile(filename);
-            };
-            li.appendChild(delBtn);
-        }
+        const delBtn = document.createElement('button');
+        delBtn.className = 'file-delete';
+        delBtn.innerText = '✕';
+        delBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteFile(filename);
+        };
+        li.appendChild(delBtn);
 
         listEl.appendChild(li);
     });
@@ -103,7 +128,7 @@ function updateActiveFileContent() {
 }
 
 function createNewFile() {
-    const filename = prompt("Enter new filename (e.g., utils.py, data.csv):");
+    const filename = prompt("Enter new filename (e.g., solution.py, data.csv):");
     if (!filename) return;
     const cleanName = filename.trim();
     
@@ -112,15 +137,16 @@ function createNewFile() {
         return;
     }
 
-    virtualFiles[cleanName] = `# ==========================================\n# STUDENT FILE: ${cleanName}\n# ==========================================\n`;
+    virtualFiles[cleanName] = `# New file: ${cleanName}\n`;
     switchFile(cleanName);
 }
 
 function deleteFile(filename) {
     if (confirm(`Are you sure you want to delete ${filename}?`)) {
         delete virtualFiles[filename];
+        const keys = Object.keys(virtualFiles);
         if (activeFile === filename) {
-            activeFile = 'main.py';
+            activeFile = keys.length > 0 ? keys[0] : null;
         }
         initFileExplorer();
     }
@@ -131,13 +157,87 @@ function toggleSidebar() {
     sidebar.classList.toggle('collapsed');
 }
 
+// Resizable Splitter Logic
+function initSplitters() {
+    // Sidebar splitter
+    const sidebar = document.getElementById('file-sidebar');
+    const sidebarSplitter = document.getElementById('sidebar-splitter');
+    
+    sidebarSplitter.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        sidebarSplitter.classList.add('dragging');
+        const onMouseMove = (e) => {
+            const newWidth = e.clientX;
+            if (newWidth > 100 && newWidth < 500) {
+                sidebar.style.width = `${newWidth}px`;
+            }
+        };
+        const onMouseUp = () => {
+            sidebarSplitter.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Instructions splitter
+    const instructionsPane = document.getElementById('instructions-pane');
+    const instructionsSplitter = document.getElementById('instructions-splitter');
+
+    instructionsSplitter.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        instructionsSplitter.classList.add('dragging');
+        const onMouseMove = (e) => {
+            const newWidth = window.innerWidth - e.clientX;
+            if (newWidth > 150 && newWidth < 600) {
+                instructionsPane.style.width = `${newWidth}px`;
+            }
+        };
+        const onMouseUp = () => {
+            instructionsSplitter.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Vertical splitter (Editor / Terminal)
+    const editorContainer = document.getElementById('editor-container');
+    const verticalSplitter = document.getElementById('vertical-splitter');
+
+    verticalSplitter.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        verticalSplitter.classList.add('dragging');
+        const startY = e.clientY;
+        const startEditorHeight = editorContainer.clientHeight;
+
+        const onMouseMove = (e) => {
+            const deltaY = e.clientY - startY;
+            const newHeight = startEditorHeight + deltaY;
+            if (newHeight > 80) {
+                editorContainer.style.flex = 'none';
+                editorContainer.style.height = `${newHeight}px`;
+            }
+        };
+        const onMouseUp = () => {
+            verticalSplitter.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+}
+
 function spawnWorker() {
     worker = new Worker('js/worker.js');
 
     worker.onmessage = (e) => {
         const msg = e.data;
         if (msg.type === 'ready') {
-            term.writeln('\x1b[32m[Container Ready]\x1b[0m Virtual file system loaded.\r\n');
+            term.writeln('\x1b[32m[Container Ready]\x1b[0m Virtual file system initialized.\r\n');
         } else if (msg.type === 'stdout') {
             term.writeln(msg.data);
         } else if (msg.type === 'stderr') {
@@ -150,6 +250,11 @@ function spawnWorker() {
 
 function toggleExecution() {
     updateActiveFileContent();
+    if (!activeFile) {
+        alert("No active file selected to run.");
+        return;
+    }
+
     if (isRunning) {
         worker.terminate();
         term.writeln('\r\n\x1b[31m[Process Terminated by User]\x1b[0m\r\n');
@@ -174,7 +279,3 @@ function returnToCourse() {
         window.close();
     }
 }
-
-// Initial boot
-initFileExplorer();
-spawnWorker();
