@@ -19,11 +19,24 @@
   </organizations>
   <resources>
     <resource identifier="resource_1" type="webcontent" adlcp:scormtype="sco" href="index.html">
+      <!-- Core Application System Files (Do not modify) -->
       <file href="imsmanifest.xml"/>
       <file href="index.html"/>
+      <file href="instructions.md"/>
       <file href="css/styles.css"/>
       <file href="js/app.js"/>
       <file href="js/worker.js"/>
+
+      <!-- ==================================================================== -->
+      <!-- INSTRUCTOR STARTER FILES:                                           -->
+      <!-- Drop your starter files into the project root folder, then declare  -->
+      <!-- them below. Every file uses the exact same <file> tag format.       -->
+      <!-- Examples:                                                           -->
+      <!-- <file href="solution.py"/>                                          -->
+      <!-- <file href="data.csv"/>                                             -->
+      <!-- <file href="README.txt"/>                                           -->
+      <!-- ==================================================================== -->
+      
     </resource>
   </resources>
 </manifest>
