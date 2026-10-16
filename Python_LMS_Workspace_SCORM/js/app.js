@@ -54,7 +54,20 @@ const ICON_PATHS = {
     save: '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',
     box: '<path d="M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8M12 13v8"/>',
     pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
-    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+    panelLeft: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 10l-2 2 2 2"/>',
+    panelRight: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M9 10l2 2-2 2"/>',
+    showLeft: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M13 10l2 2-2 2"/>',
+    showRight: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16M11 10l-2 2 2 2"/>',
+    arrowUp: '<path d="M12 19V5M6 11l6-6 6 6"/>',
+    arrowDown: '<path d="M12 5v14M6 13l6 6 6-6"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+    trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+    alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.5v.5"/>',
+    fill: '<path d="M12 4v10M7 9l5 5 5-5M5 20h14"/>'
 };
 
 function icon(name, cls = '') {
@@ -96,8 +109,9 @@ function menuButton({ label, iconName, title, className = 'tool-btn', items, ali
     menu.setAttribute('role', 'menu');
     wrap.append(btn, menu);
     const render = () => {
-        setBtn(btn, typeof iconName === 'function' ? iconName() : iconName, label);
-        if (label) btn.insertAdjacentHTML('beforeend', icon('chevronDown', 'chev'));
+        const text = typeof label === 'function' ? label() : label;
+        setBtn(btn, typeof iconName === 'function' ? iconName() : iconName, text);
+        if (text) btn.insertAdjacentHTML('beforeend', icon('chevronDown', 'chev'));
     };
     const outside = (e) => { if (!wrap.contains(e.target)) close(); };
     function close() {
@@ -468,6 +482,8 @@ function setMode(newMode) {
     updateConnectionBadge();
     clearResults();
     document.getElementById('test-btn').hidden = project.tests.length === 0 && mode !== 'instructor';
+    const railBtn = document.getElementById('expand-instructions-btn');
+    railBtn.title = railBtn.ariaLabel = mode === 'instructor' ? 'Show panel' : 'Show instructions';
     document.getElementById('new-file-btn').hidden = mode !== 'instructor' && !project.allowNewFiles;
     document.getElementById('new-folder-btn').hidden = mode !== 'instructor' && !project.allowNewFiles;
     if (window.Instructor && window.Instructor.onModeChanged) window.Instructor.onModeChanged(mode);
@@ -707,8 +723,8 @@ function updateStatusBar(cm) {
     const cursor = cm.getCursor();
     document.getElementById('status-cursor').innerText = `Ln ${cursor.line + 1}, Col ${cursor.ch + 1}`;
     let label = activeFile || "No file selected";
-    if (activeFile && isProtected(activeFile)) label += '  🔒 read-only';
-    if (mode === 'instructor' && solutionView && activeFile && project.files[activeFile]?.solution != null) label += '  ★ solution';
+    if (activeFile && isProtected(activeFile)) label += '  ·  read-only';
+    if (mode === 'instructor' && solutionView && activeFile && project.files[activeFile]?.solution != null) label += '  ·  solution';
     document.getElementById('status-filename').innerText = label;
     document.getElementById('status-selection').innerText = cm.somethingSelected() ? `(${cm.getSelection().length} chars selected)` : "";
     document.getElementById('status-mode').innerText = activeFile && !activeFile.endsWith('.py') ? 'Plain Text' : 'Python';
@@ -779,7 +795,6 @@ window.toggleInstructionsPane = function () {
     const pane = document.getElementById('instructions-pane');
     pane.classList.add('animating');
     document.body.classList.toggle('instructions-collapsed');
-    window.dispatchEvent(new Event('resize'));
     setTimeout(() => {
         pane.classList.remove('animating');
         fitAddon.fit();
@@ -1032,7 +1047,7 @@ window.downloadSelected = async function () {
 };
 
 window.toggleSidebar = function () {
-    document.getElementById('file-sidebar').classList.toggle('collapsed');
+    document.body.classList.toggle('files-collapsed');
     setTimeout(() => { fitAddon.fit(); if (cmEditor) cmEditor.refresh(); }, 210);
 };
 
@@ -1211,7 +1226,7 @@ window.modalDownloadWork = async function () {
     Object.keys(virtualFiles).forEach(path => zipAdd(zip, path));
     triggerDownload(await zip.generateAsync({ type: "blob" }), "workspace-export.zip");
     isDirty = false;
-    document.getElementById('modal-download-btn').innerText = "Downloaded ✓";
+    document.getElementById('modal-download-btn').innerText = "Downloaded";
     setTimeout(() => { document.getElementById('modal-download-btn').innerText = "Download my work (.zip)"; }, 2000);
 };
 
@@ -1528,7 +1543,7 @@ function spawnWorker() {
         if (msg.type === 'ready') {
             workerReady = true;
             if (msg.commands) shell.commands = msg.commands;
-            term.writeln('\x1b[32m[Python ready]\x1b[0m Run the open file with ▶ Run (Ctrl+Enter), or type \x1b[1mhelp\x1b[0m for terminal commands.');
+            term.writeln('\x1b[32m[Python ready]\x1b[0m Run the open file with Run (Ctrl+Enter), or type \x1b[1mhelp\x1b[0m for terminal commands.');
             syncWorkerFiles();
             showPrompt();
         } else if (msg.type === 'shellResult') {
@@ -1912,7 +1927,7 @@ window.runTests = async function () {
 
 function clearResults() {
     lastResults = null;
-    document.getElementById('results-panel').innerHTML = '<div class="results-status">Click ✓ Run Tests to check your work against the assignment tests.</div>';
+    document.getElementById('results-panel').innerHTML = '<div class="results-status">Click Run Tests to check your work against the assignment tests.</div>';
     showBottomTab('terminal');
 }
 
@@ -1948,9 +1963,13 @@ function renderResults(results, { viewer, report, kind }) {
         const showDetails = viewer === 'instructor' || !r.hidden;
         const row = el('div', 'result-row ' + (r.passed ? 'pass' : 'fail'));
         const top = el('div', 'result-top');
-        top.appendChild(el('span', 'result-icon', r.passed ? '✔' : '✘'));
+        const ri = el('span', 'result-icon');
+    ri.innerHTML = icon(r.passed ? 'check' : 'close');
+    top.appendChild(ri);
         const name = showDetails ? r.name : `Hidden test ${i + 1}`;
-        top.appendChild(el('span', 'result-name', (r.hidden ? '🔒 ' : '') + name));
+        const rn = el('span', 'result-name', name);
+    if (r.hidden) rn.insertAdjacentHTML('afterbegin', icon('lock', 'inline'));
+    top.appendChild(rn);
         top.appendChild(el('span', 'result-points', `${r.earned}/${r.points} pt${r.points === 1 ? '' : 's'}`));
         row.appendChild(top);
         if (!r.passed && showDetails && r.message) {

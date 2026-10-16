@@ -21,6 +21,7 @@
         const el = document.createElement(tag);
         for (const [k, v] of Object.entries(attrs || {})) {
             if (v == null || v === false) continue;
+            if (k === 'icon') continue;
             if (k === 'class') el.className = v;
             else if (k === 'text') el.innerText = v;
             else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
@@ -32,6 +33,7 @@
             if (c == null || c === false) continue;
             el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
         }
+        if (attrs && attrs.icon) el.insertAdjacentHTML('afterbegin', App.icon(attrs.icon));
         return el;
     }
     const P = () => App.project;
@@ -58,7 +60,7 @@
         onModeChanged(mode) {
             const sw = document.getElementById('mode-switch');
             sw.hidden = false;
-            sw.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+            if (modeMenu) modeMenu.refresh();
             if (mode === 'instructor') {
                 renderPanel();
                 renderEditorHeader();
@@ -100,7 +102,7 @@
             badge.addEventListener('click', (e) => { e.stopPropagation(); cycleRole(path); });
             li.querySelector('.file-row-content').prepend(badge);
             if (f.solution != null) {
-                li.querySelector('.file-row-content').appendChild(h('span', { class: 'sol-star', title: 'Has a solution version', text: '★' }));
+                li.querySelector('.file-row-content').appendChild(h('span', { class: 'sol-star', title: 'Has a solution version', icon: 'star' }));
             }
         },
 
@@ -122,7 +124,7 @@
             if (!draft.project || JSON.stringify(App.normalizeProject(draft.project)) === folderProjectJSON) return;
             App.project = draft.project;
             const when = new Date(draft.savedAt).toLocaleString();
-            App.showBanner(`Restored your unsaved work from ${when}. Use Project → Save Project to keep a copy.`, 'info', [
+            App.showBanner(`Restored your unsaved work from ${when}. Use Menu (top left) → Save Project to keep a copy.`, 'info', [
                 { label: 'Discard draft', onClick: discardDraft }
             ]);
         } catch (e) { /* ignore */ }
@@ -145,7 +147,7 @@
             ind.classList.add('show');
             setTimeout(() => ind.classList.remove('show'), 1200);
         } catch (e) {
-            if (!draftWarned) { draftWarned = true; App.toast('Too large to autosave in the browser — use Project → Save Project.', 'warn'); }
+            if (!draftWarned) { draftWarned = true; App.toast('Too large to autosave in the browser — use Menu (top left) → Save Project.', 'warn'); }
         }
     }
 
@@ -160,19 +162,26 @@
     }
 
     // ---------------------------------------------------------------- toolbar
+    let modeMenu = null;
+
     function buildToolbar() {
         const sw = document.getElementById('mode-switch');
         sw.innerHTML = '';
-        const instructorBtn = h('button', { 'data-mode': 'instructor', title: 'Build and test the assignment', onclick: () => App.setMode('instructor') });
-        const previewBtn = h('button', { 'data-mode': 'preview', title: 'See exactly what students will see', onclick: () => App.setMode('preview') });
-        App.setBtn(instructorBtn, 'pencil', 'Instructor');
-        App.setBtn(previewBtn, 'eye', 'Student preview');
-        sw.append(instructorBtn, previewBtn);
+        modeMenu = App.menuButton({
+            label: () => App.mode === 'preview' ? 'Student preview' : 'Instructor',
+            iconName: () => App.mode === 'preview' ? 'eye' : 'pencil',
+            title: 'Switch between building the assignment and seeing it as a student',
+            items: () => [
+                { label: 'Instructor', icon: 'pencil', checked: App.mode === 'instructor', title: 'Build and test the assignment', onClick: () => App.setMode('instructor') },
+                { label: 'Student preview', icon: 'eye', checked: App.mode === 'preview', title: 'See exactly what students will see', onClick: () => App.setMode('preview') }
+            ]
+        });
+        sw.appendChild(modeMenu);
         const actions = document.getElementById('instructor-actions');
         actions.innerHTML = '';
         const openInput = h('input', { type: 'file', accept: '.zip', hidden: true, onchange: (e) => { if (e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; } });
-        const projectMenu = App.menuButton({
-            label: 'Project', iconName: 'folder', title: 'New, open or save a project',
+        const mainMenu = App.menuButton({
+            iconName: 'menu', title: 'Menu: new, open or save a project', className: 'icon-btn', align: 'start',
             items: () => [
                 { label: 'New assignment', icon: 'newDoc', title: 'Start a new, empty assignment', onClick: newAssignment },
                 { label: 'Open…', icon: 'open', title: 'Open a saved project (.zip) or an exported D2L package', onClick: () => openInput.click() },
@@ -180,9 +189,7 @@
                 { label: 'Save Project (.zip)', icon: 'save', title: 'Download the full project, including solutions', onClick: saveProject }
             ]
         });
-        const publishBtn = h('button', { class: 'export-btn', title: 'Build the student package to upload to D2L', onclick: () => { activeTab = 'publish'; if (App.mode !== 'instructor') App.setMode('instructor'); else renderPanel(); } });
-        App.setBtn(publishBtn, 'box', 'Publish');
-        actions.append(projectMenu, publishBtn, openInput);
+        actions.append(mainMenu, openInput);
     }
 
     function buildSidebarExtra() {
@@ -253,7 +260,7 @@
         const sv = App.solutionView;
         const seg = h('div', { class: 'segmented' },
             h('button', { class: !sv ? 'active' : '', onclick: () => setSolutionView(false), title: 'The code students start with', text: 'Starter code' }),
-            h('button', { class: sv ? 'active' : '', onclick: () => setSolutionView(true), title: 'Your working solution (never shipped to students)', text: '★ Solution' })
+            h('button', { class: sv ? 'active' : '', onclick: () => setSolutionView(true), title: 'Your working solution (never shipped to students)', icon: 'star', text: 'Solution' })
         );
         box.appendChild(seg);
         const path = App.activeFile;
@@ -306,6 +313,7 @@
                 .map(([id, label]) => h('button', { class: 'ipanel-tab' + (activeTab === id ? ' active' : ''), 'data-tab': id, onclick: () => { activeTab = id; renderPanel(); }, text: label }))
         );
         updateTabBadgeIn(tabs);
+        tabs.appendChild(h('button', { class: 'icon-btn ipanel-hide', title: 'Hide panel', 'aria-label': 'Hide panel', icon: 'panelRight', onclick: () => window.toggleInstructionsPane() }));
         panel.appendChild(tabs);
         const body = h('div', { class: 'ipanel-body' });
         panel.appendChild(body);
@@ -400,7 +408,7 @@
     function statusChip(label, ev, stale) {
         if (!ev) return h('span', { class: 'chip none', title: `Not run on ${label.toLowerCase()} yet` }, `${label}: –`);
         const cls = stale ? 'chip stale' : (ev.passed ? 'chip pass' : 'chip fail');
-        return h('span', { class: cls, title: stale ? 'Out of date — re-run' : (ev.message || 'Passed') }, `${label}: ${ev.passed ? '✔' : '✘'}${stale ? ' (stale)' : ''}`);
+        return h('span', { class: cls, title: stale ? 'Out of date — re-run' : (ev.message || 'Passed') }, `${label}: ${ev.passed ? 'pass' : 'fail'}${stale ? ' (stale)' : ''}`);
     }
 
     function field(label, input, hint) {
@@ -433,11 +441,11 @@
             h('span', { class: 'test-type type-' + t.type, text: typeLabel }),
             h('input', { class: 'test-name', value: t.name, placeholder: 'Test name (students see this)', oninput: bind(t, 'name') }),
             h('div', { class: 'test-tools' },
-                h('button', { class: 'icon-btn', title: 'Run this test on your solution', onclick: () => runOne(t), text: '▶' }),
-                h('button', { class: 'icon-btn', title: 'Move up', disabled: idx === 0, onclick: () => { const a = P().tests; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; changed(); }, text: '↑' }),
-                h('button', { class: 'icon-btn', title: 'Move down', disabled: idx === P().tests.length - 1, onclick: () => { const a = P().tests; [a[idx + 1], a[idx]] = [a[idx], a[idx + 1]]; changed(); }, text: '↓' }),
-                h('button', { class: 'icon-btn', title: 'Duplicate', onclick: () => { const c = JSON.parse(JSON.stringify(t)); c.id = App.uid(); c.name += ' (copy)'; P().tests.splice(idx + 1, 0, c); changed(); }, text: '⧉' }),
-                h('button', { class: 'icon-btn danger', title: 'Delete test', onclick: () => { if (confirm(`Delete "${t.name}"?`)) { P().tests.splice(idx, 1); changed(); } }, text: '✕' })
+                h('button', { class: 'icon-btn', title: 'Run this test on your solution', onclick: () => runOne(t), icon: 'play' }),
+                h('button', { class: 'icon-btn', title: 'Move up', disabled: idx === 0, onclick: () => { const a = P().tests; [a[idx - 1], a[idx]] = [a[idx], a[idx - 1]]; changed(); }, icon: 'arrowUp' }),
+                h('button', { class: 'icon-btn', title: 'Move down', disabled: idx === P().tests.length - 1, onclick: () => { const a = P().tests; [a[idx + 1], a[idx]] = [a[idx], a[idx + 1]]; changed(); }, icon: 'arrowDown' }),
+                h('button', { class: 'icon-btn', title: 'Duplicate', onclick: () => { const c = JSON.parse(JSON.stringify(t)); c.id = App.uid(); c.name += ' (copy)'; P().tests.splice(idx + 1, 0, c); changed(); }, icon: 'copy' }),
+                h('button', { class: 'icon-btn danger', title: 'Delete test', onclick: () => { if (confirm(`Delete "${t.name}"?`)) { P().tests.splice(idx, 1); changed(); } }, icon: 'trash' })
             )
         );
         card.appendChild(head);
@@ -459,7 +467,7 @@
             card.append(
                 field('Input (one line per input() call)', h('textarea', { rows: 2, class: 'mono', value: t.stdin, placeholder: 'e.g.\n5\n10', oninput: bind(t, 'stdin') })),
                 field('Expected output', h('textarea', { rows: 4, class: 'mono', value: t.expected, placeholder: 'What the program should print (input prompts are not included)', oninput: bind(t, 'expected') }),
-                    h('span', null, h('button', { class: 'link-btn', onclick: () => fillFromSolution(t), text: '⤓ Fill from solution' }), ' — runs your solution with the input above.')),
+                    h('span', null, h('button', { class: 'link-btn', onclick: () => fillFromSolution(t), text: 'Fill from solution' }), ' — runs your solution with the input above.')),
                 field('How to compare', (() => {
                     const s = h('select', { onchange: bind(t, 'match') },
                         h('option', { value: 'normalized' }, 'Same output (ignore trailing spaces / blank lines) — recommended'),
@@ -473,7 +481,7 @@
             card.append(
                 field('Call', h('input', { class: 'mono', value: t.call, placeholder: 'e.g. add(2, 3)', oninput: bind(t, 'call') }), 'Any Python expression using names from the student\'s file.'),
                 field('Expected value', h('input', { class: 'mono', value: t.expected, placeholder: 'e.g. 5   or   [1, 2]   or   "hello"', oninput: bind(t, 'expected') }),
-                    h('span', null, 'A Python literal. ', h('button', { class: 'link-btn', onclick: () => fillFromSolution(t), text: '⤓ Fill from solution' }))),
+                    h('span', null, 'A Python literal. ', h('button', { class: 'link-btn', onclick: () => fillFromSolution(t), text: 'Fill from solution' }))),
                 h('div', { class: 'test-grid' },
                     field('Float tolerance', h('input', { type: 'number', step: 'any', min: '0', value: t.tolerance ?? '', placeholder: 'exact', oninput: bind(t, 'tolerance', v => v === '' ? null : Number(v)) }), 'e.g. 0.01'),
                     field('Input during import', h('input', { class: 'mono', value: t.stdin, placeholder: '(optional)', oninput: bind(t, 'stdin') }), 'If the file calls input() at top level.'))
@@ -495,8 +503,8 @@
                 h('div', null, h('strong', null, `${P().tests.length} test${P().tests.length === 1 ? '' : 's'} · ${total} point${total === 1 ? '' : 's'}`),
                     ' — students\' score = points earned ÷ total.'),
                 h('div', { class: 'btn-row' },
-                    h('button', { class: 'run-btn', onclick: () => runAll('solution'), title: 'Every test should pass on your solution', text: '▶ Run all on solution' }),
-                    h('button', { class: 'tool-btn', onclick: () => runAll('starter'), title: 'Checks the starter code does not already pass', text: '▶ Run all on starter' })),
+                    h('button', { class: 'run-btn', onclick: () => runAll('solution'), title: 'Every test should pass on your solution', icon: 'play', text: 'Run all on solution' }),
+                    h('button', { class: 'tool-btn', onclick: () => runAll('starter'), title: 'Checks the starter code does not already pass', icon: 'play', text: 'Run all on starter' })),
                 h('div', { id: 'tests-run-status', class: 'hint' }, validationSummary())
             )
         );
@@ -510,15 +518,15 @@
         }
         P().tests.forEach((t, i) => body.appendChild(renderTestCard(t, i)));
         body.appendChild(h('div', { class: 'btn-row add-row' },
-            h('button', { class: 'tool-btn', onclick: () => newTest('output'), text: '+ Output test' }),
-            h('button', { class: 'tool-btn', onclick: () => newTest('function'), text: '+ Function test' }),
-            h('button', { class: 'tool-btn', onclick: () => newTest('code'), text: '+ Custom code test' })));
+            h('button', { class: 'tool-btn', onclick: () => newTest('output'), icon: 'plus', text: 'Output test' }),
+            h('button', { class: 'tool-btn', onclick: () => newTest('function'), icon: 'plus', text: 'Function test' }),
+            h('button', { class: 'tool-btn', onclick: () => newTest('code'), icon: 'plus', text: 'Custom code test' })));
     }
 
     function validationSummary() {
         if (!P().tests.length) return '';
         const fresh = validation.solutionHash === gradingHash();
-        let s = fresh ? (validation.solutionAllPass ? '✔ All tests pass on your solution.' : '✘ Some tests fail on your solution.') : 'Tests have not been run on the current version.';
+        let s = fresh ? (validation.solutionAllPass ? 'All tests pass on your solution.' : 'Some tests fail on your solution.') : 'Tests have not been run on the current version.';
         if (validation.starterPercent != null) s += ` Starter scores ${Math.round(validation.starterPercent)}%.`;
         return s;
     }
@@ -537,10 +545,10 @@
             field('Assignment title', h('input', { value: p.title, oninput: (e) => { p.title = e.target.value; document.getElementById('brand-title').innerText = p.title; changed({ quiet: true }); } }), 'Shown in the toolbar and as the D2L package title.'),
             field('Main file', entry, 'Run Code and tests use this file unless a test picks another.'),
             field('Passing score (%)', h('input', { type: 'number', min: '0', max: '100', value: p.passingScore, oninput: (e) => { p.passingScore = Number(e.target.value) || 0; changed({ quiet: true }); } }), '0 = D2L marks the activity "completed" once tests run. Above 0 = "passed"/"failed".'),
-            field('Grade reporting', policy, 'Each time a student clicks ✓ Run Tests, the score is sent to D2L.'),
+            field('Grade reporting', policy, 'Each time a student clicks Run Tests, the score is sent to D2L.'),
             h('label', { class: 'field check' }, h('input', { type: 'checkbox', checked: p.allowNewFiles, onchange: (e) => { p.allowNewFiles = e.target.checked; changed({ quiet: true }); } }), h('span', null, 'Students may create their own files and folders')),
             h('div', { class: 'settings-meta' }, `Package ID: ${p.id}`),
-            h('div', { class: 'btn-row' }, h('button', { class: 'tool-btn', onclick: discardDraft, text: '↺ Reload assignment from folder' }))
+            h('div', { class: 'btn-row' }, h('button', { class: 'tool-btn', onclick: discardDraft, icon: 'reset', text: 'Reload assignment from folder' }))
         );
     }
 
@@ -573,15 +581,15 @@
         const items = checklist();
         const list = h('ul', { class: 'checklist' },
             ...items.map(it => h('li', { class: 'check-' + it.level },
-                h('span', { class: 'check-icon', text: it.level === 'ok' ? '✔' : it.level === 'warn' ? '!' : '✘' }),
+                h('span', { class: 'check-icon', icon: it.level === 'ok' ? 'check' : it.level === 'warn' ? 'alert' : 'close' }),
                 h('span', { class: 'check-text', text: it.text }),
                 it.level !== 'ok' && it.action ? h('button', { class: 'link-btn', onclick: it.action, text: 'Fix' }) : null)));
         body.append(
             h('h3', { class: 'ipanel-h' }, 'Ready to publish?'),
             list,
             h('div', { class: 'btn-row' },
-                h('button', { class: 'export-btn big', onclick: exportForD2L, text: '📦 Export for D2L (.zip)' }),
-                h('button', { class: 'tool-btn', onclick: () => App.setMode('preview'), text: '👁 Preview as student' })),
+                h('button', { class: 'export-btn big', onclick: exportForD2L, icon: 'box', text: 'Export for D2L (.zip)' }),
+                h('button', { class: 'tool-btn', onclick: () => App.setMode('preview'), icon: 'eye', text: 'Preview as student' })),
             h('h3', { class: 'ipanel-h' }, 'Upload to D2L'),
             h('ol', { class: 'steps' },
                 h('li', null, 'In ', h('strong', null, 'Content'), ', upload the exported .zip as a SCORM package (newer D2L: ', h('strong', null, 'SCORM/xAPI object'), ').'),
@@ -593,7 +601,7 @@
                 h('li', null, 'Starter (S) and read-only (R) files, the instructions, and the tests in an encoded file.'),
                 h('li', null, 'Not included: solution versions, Instructor Mode, and plain-text tests.'),
                 h('li', null, 'Students\' work auto-saves in their browser. Hidden (H) files exist only while tests run.')),
-            h('p', { class: 'hint' }, 'Tip: use Project → Save Project to keep an editable copy (with solutions) for next semester.')
+            h('p', { class: 'hint' }, 'Tip: use Menu (top left) → Save Project to keep an editable copy (with solutions) for next semester.')
         );
     }
 
@@ -681,7 +689,7 @@ ${files.map(f => `      <file href="${esc(f)}"/>`).join('\n')}
             const dat = zip.file('assignment.dat') || zip.file(/(^|\/)assignment\.dat$/)[0];
             if (dat) {
                 project = App.decodePackage(await dat.async('string'));
-                App.toast('Opened a D2L package. Solutions are never included in packages — add them again in ★ Solution view.', 'warn');
+                App.toast('Opened a D2L package. Solutions are never included in packages — add them again in Solution view.', 'warn');
             } else {
                 const jsonFile = zip.file(/(^|\/)assignment\.json$/)[0];
                 if (!jsonFile) throw new Error('No assignment.json or assignment.dat found in this zip.');

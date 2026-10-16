@@ -58,23 +58,23 @@ function check(name, cond, extra='') { results.push(`${cond ? 'PASS' : 'FAIL'}  
 
   await page.click('.ipanel-tab[data-tab="tests"]');
   check('7 test cards', await page.locator('.test-card').count() === 7);
-  await page.click('text=▶ Run all on solution');
+  await page.click('text=Run all on solution');
   await page.waitForFunction(() => document.querySelectorAll('.chip.pass, .chip.fail').length >= 7, null, { timeout: 90000 });
   const solChips = await page.$$eval('.test-status', els => els.map(e => e.children[0].className + ' ' + e.children[0].innerText));
   check('All tests pass on solution', solChips.every(c => c.includes('pass')), JSON.stringify(solChips.filter(c => !c.includes('pass'))));
   const failMsgs = await page.$$eval('.test-error', els => els.map(e => e.innerText));
   if (failMsgs.length) console.log('solution failures:', failMsgs);
-  await page.click('text=▶ Run all on starter');
+  await page.click('text=Run all on starter');
   await page.waitForFunction(() => [...document.querySelectorAll('.test-status')].every(s => s.children[1] && !s.children[1].classList.contains('none')), null, { timeout: 90000 });
   const starterPass = await page.$$eval('.test-status', els => els.filter(e => e.children[1].classList.contains('pass')).length);
   check('Starter passes 0 tests', starterPass === 0, `starter passed ${starterPass}`);
   await page.screenshot({ path: T + '/shot-tests.png' });
 
   // Fill from solution on a new output test
-  await page.click('text=+ Output test');
+  await page.click('button:has-text("Output test")');
   const lastCard = page.locator('.test-card').last();
   await lastCard.locator('textarea').first().fill('0');
-  await lastCard.locator('text=⤓ Fill from solution').click();
+  await lastCard.locator('text=Fill from solution').click();
   await page.waitForFunction(() => { const c = [...document.querySelectorAll('.test-card')].pop(); return c && c.querySelectorAll('textarea')[1].value.includes('32.0'); }, null, { timeout: 60000 });
   check('Fill-from-solution captured expected output', true);
   // delete it again
@@ -88,15 +88,17 @@ function check(name, cond, extra='') { results.push(`${cond ? 'PASS' : 'FAIL'}  
   await page.screenshot({ path: T + '/shot-publish.png' });
 
   // Student preview
-  await page.click('#mode-switch button[data-mode="preview"]');
+  await page.click('#mode-switch .menu-trigger');
+  await page.click('#mode-switch .menu-item:has-text("Student preview")');
   check('Preview hides hidden file', await page.locator('.file-item[data-path="tests/hidden_readings.csv"]').count() === 0);
   check('Preview hides instructor panel', !(await page.locator('#instructor-panel').isVisible()));
   check('Preview shows solution? (should show starter)', !(await page.evaluate(() => window.App.virtualFiles['main.py'].includes('9 / 5'))));
-  await page.click('#mode-switch button[data-mode="instructor"]');
+  await page.click('#mode-switch .menu-trigger');
+  await page.click('#mode-switch .menu-item:has-text("Instructor")');
 
   // Export
   await page.click('.ipanel-tab[data-tab="publish"]');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('text=📦 Export for D2L (.zip)')]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('text=Export for D2L (.zip)')]);
   const zipPath = T + '/export.zip';
   await dl.saveAs(zipPath);
   check('Export filename', /sample-lab-temperature-converter_SCORM\.zip/.test(dl.suggestedFilename()), dl.suggestedFilename());

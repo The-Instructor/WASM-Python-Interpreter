@@ -388,24 +388,9 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .lms-badge.off { background: var(--hover); color: var(--text-muted); border-color: var(--border); }
 .lms-badge.preview { background: var(--warn-soft); color: var(--warn-text); }
 
-.mode-switch {
-    display: inline-flex;
-    padding: 2px;
-    gap: 2px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-}
+.mode-switch { display: inline-flex; }
 .mode-switch[hidden] { display: none; }
-.mode-switch button {
-    height: 26px;
-    padding: 0 10px;
-    border-radius: 7px;
-    color: var(--text-muted);
-}
-.mode-switch button:hover:not(.active) { color: var(--text); background: var(--hover); }
-.mode-switch button.active { background: var(--surface-2); color: var(--text); box-shadow: var(--shadow-sm), 0 0 0 1px var(--border); }
-body[data-mode="preview"] .mode-switch button.active { color: var(--warn-text); }
+body[data-mode="preview"] .mode-switch .menu-trigger { color: var(--warn-text); border-color: color-mix(in srgb, var(--warn-text) 40%, transparent); background: var(--warn-soft); }
 
 /* ==========================================================================
    Workspace layout
@@ -446,7 +431,21 @@ body.is-resizing-x .splitter, body.is-resizing-y .splitter-horizontal { backgrou
     flex-direction: column;
     flex-shrink: 0;
 }
-#file-sidebar.collapsed { display: none; }
+body.files-collapsed #file-sidebar, body.files-collapsed #sidebar-splitter { display: none; }
+
+/* Slim rails that appear in place of a hidden side panel */
+.pane-rail {
+    display: none;
+    width: 40px;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 6px;
+    background: var(--surface);
+}
+.pane-rail.left { border-right: 1px solid var(--border); }
+.pane-rail.right { border-left: 1px solid var(--border); }
+body.files-collapsed #files-rail, body.instructions-collapsed #instructions-rail { display: flex; }
 
 .sidebar-header, .instructions-header {
     height: 38px;
@@ -693,7 +692,8 @@ body.is-resizing-x .splitter, body.is-resizing-y .splitter-horizontal { backgrou
     box-shadow: var(--shadow-sm);
 }
 .result-top { display: flex; align-items: center; gap: 8px; }
-.result-icon { width: 16px; font-weight: 700; }
+.result-icon { width: 16px; display: inline-flex; }
+.icon.inline { display: inline-block; width: 13px; height: 13px; vertical-align: -2px; margin-right: 5px; color: var(--text-faint); }
 .result-row.pass .result-icon { color: var(--ok-text); }
 .result-row.fail .result-icon { color: var(--err-text); }
 .result-name { flex: 1; }
@@ -740,15 +740,6 @@ body.instructions-collapsed #instructions-pane {
 body.instructions-collapsed #instructions-splitter { display: none !important; }
 .instructions-header { border-bottom: 1px solid var(--border); }
 
-#expand-instructions-floating {
-    display: none;
-    position: fixed;
-    right: 10px;
-    top: calc(var(--toolbar-h) + 10px);
-    z-index: 100;
-    box-shadow: var(--shadow-md);
-}
-body.instructions-collapsed #expand-instructions-floating { display: inline-flex; }
 
 .markdown-body {
     padding: 18px 20px 28px;
@@ -903,7 +894,8 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 .role-readonly { background: var(--warn-soft); color: var(--warn-text); }
 .role-hidden { background: var(--purple-soft); color: var(--purple-text); }
 .role-badge:hover { filter: brightness(1.15); }
-.sol-star { color: var(--warn-text); font-size: 11px; }
+.sol-star { color: var(--warn-text); display: inline-flex; }
+.sol-star .icon { width: 13px; height: 13px; fill: currentColor; }
 #file-sidebar.drop-target { outline: 2px dashed var(--accent); outline-offset: -6px; background: var(--accent-soft); }
 
 #editor-header {
@@ -949,6 +941,7 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 }
 .ipanel-tab:hover { color: var(--text); background: var(--hover); }
 .ipanel-tab.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--purple); }
+.ipanel-hide { flex: 0 0 auto; align-self: center; width: 28px; height: 28px; margin: 0 0 2px 4px; }
 .ipanel-tab .count {
     font-size: 10.5px;
     font-weight: 600;
@@ -1036,6 +1029,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .test-tools { display: flex; gap: 0; }
 .test-tools .icon-btn, .test-card .icon-btn { width: 26px; height: 26px; font-size: 12px; }
 .test-status { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip .icon { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; stroke-width: 2.6; }
 .chip { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 999px; background: var(--hover); color: var(--text-muted); }
 .chip.pass { background: var(--ok-soft); color: var(--ok-text); }
 .chip.fail { background: var(--err-soft); color: var(--err-text); }
@@ -1064,7 +1058,8 @@ input[type="checkbox"] { accent-color: var(--accent); }
     border-radius: var(--radius);
     padding: 8px 10px;
 }
-.check-icon { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.check-icon { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.check-icon .icon { width: 13px; height: 13px; stroke-width: 2.4; }
 .check-ok .check-icon { background: var(--ok-soft); color: var(--ok-text); }
 .check-warn .check-icon { background: var(--warn-soft); color: var(--warn-text); }
 .check-error .check-icon { background: var(--err-soft); color: var(--err-text); }
@@ -1075,8 +1070,7 @@ input[type="checkbox"] { accent-color: var(--accent); }
    Narrow windows: drop labels before anything overlaps
    ========================================================================== */
 @media (max-width: 1100px) {
-    #exit-btn .label, #instructor-actions .menu-trigger .label, .mode-switch button .label { display: none; }
-    .mode-switch button { padding: 0 8px; }
+    #exit-btn .label, .mode-switch .menu-trigger .label { display: none; }
 }
 @media (max-width: 860px) {
     .lms-badge, .run-btn kbd { display: none; }

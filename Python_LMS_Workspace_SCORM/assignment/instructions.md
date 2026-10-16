@@ -15,8 +15,8 @@ In this lab you will write functions that convert temperatures and work with a d
 ```
 
 ### Running and testing
-* **▶ Run Code** runs your program. When it asks for input, type in the terminal and press **Enter**.
-* **✓ Run Tests** checks your work and records your score in D2L. You can run the tests as many times as you like — your best score counts.
+* **Run** runs your program. When it asks for input, type in the terminal and press **Enter**.
+* **Run Tests** checks your work and records your score in D2L. You can run the tests as many times as you like — your best score counts.
 * Your work is saved automatically in this browser.
 
 ### Grading

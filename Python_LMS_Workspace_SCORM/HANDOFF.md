@@ -88,7 +88,9 @@ Template folder (instructor)                 Exported student package (D2L)
 **Student conveniences:** work autosaves to `localStorage` under the key `pyws:work:<id>:<title>`. Students can reset a single file to the starter code, and a "Start over" banner appears when saved work is restored.
 
 ## Instructor Mode features (`js/instructor.js`)
-* **Toolbar:** Instructor / Student preview switch, a **Project** menu (New assignment, Open…, Save Project), and **Publish**. Students see only Run, Run Tests, theme and Exit.
+* **Toolbar:** ☰ menu at top left (New assignment, Open…, Save Project), Run / Run Tests in the center, and an **Instructor / Student preview** dropdown, theme and Exit at the right. There is no Publish button in the toolbar on purpose: instructors reach it through the right panel's **Publish** tab, after running tests on the solution. Students see only Run, Run Tests, theme and Exit.
+* **Panels:** the Files header and the right panel (both modes) each have a hide button; a hidden panel leaves a 40px rail with a show button (`body.files-collapsed` / `body.instructions-collapsed`, `.pane-rail`).
+* **Icons:** all UI icons are outline SVGs from `ICON_PATHS` in app.js; instructor.js's `h()` takes an `icon:` attribute. No emoji in the UI.
 * **File tree:** S/R/H role badges (click to change), a ★ marker on files with a solution, and upload or drag-and-drop.
 * **Editor header:** a Starter / ★ Solution toggle, with prompts to create or remove a solution version.
 * **Tabs:**
@@ -143,6 +145,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | UI feedback round: ☰ menu replaces Project dropdown, Instructor/Student preview dropdown, Publish removed from toolbar, hide/show for both side panels (incl. Instructor Mode) with edge rails, all emoji replaced by outline icons. Guide, sample instructions and E2E selectors updated. Checked in the browser (both modes, menus, panel rails, Publish tab). |
 | 2026-10-16 | Recorded the recommended D2L upload settings (new window, built-in navigation, add review/retake, grade item Yes + Highest Attempt, always latest version) in INSTRUCTOR_GUIDE.md and the in-app Publish tab. |
 | 2026-10-16 | Rewrote INSTRUCTOR_GUIDE.md: short steps, current button names, what the start script does, D2L grade-item/review-retake answers, new "Update to a new version" section. |
 | 2026-10-16 | Workflow: changes go to the repo only; the instructor's local folder is no longer synced. |

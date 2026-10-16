@@ -27,7 +27,8 @@
 <body data-mode="student">
     <header id="toolbar">
         <div class="toolbar-left">
-            <button id="toggle-sidebar-btn" class="icon-btn" onclick="toggleSidebar()" title="Show or hide files" aria-label="Show or hide files" data-icon="sidebar"></button>
+            <!-- Filled by js/instructor.js in the instructor template only (menu: New / Open / Save) -->
+            <div id="instructor-actions" class="instructor-only"></div>
             <div class="brand" id="brand-title">Python Lab Workspace</div>
             <span id="lms-badge" class="lms-badge" hidden></span>
             <span id="save-indicator" class="save-indicator">Saved</span>
@@ -37,9 +38,8 @@
             <button id="test-btn" class="test-btn" onclick="runTests()" title="Run the assignment's automated tests" hidden></button>
         </div>
         <div class="toolbar-right">
-            <!-- Filled by js/instructor.js in the instructor template only -->
+            <!-- Instructor / Student preview dropdown (instructor template only) -->
             <div id="mode-switch" class="mode-switch" hidden></div>
-            <div id="instructor-actions" class="instructor-only"></div>
             <button id="exit-btn" class="exit-btn" onclick="showExitModal()" title="Exit lab" data-icon="exit" data-label="Exit"></button>
         </div>
     </header>
@@ -47,6 +47,10 @@
     <div id="banner" class="banner" hidden></div>
 
     <main id="workspace">
+        <!-- Shown only while the file panel is hidden -->
+        <div class="pane-rail left" id="files-rail">
+            <button class="icon-btn" onclick="toggleSidebar()" title="Show files" aria-label="Show files" data-icon="showLeft"></button>
+        </div>
         <!-- LEFT: File Tree Sidebar -->
         <aside id="file-sidebar">
             <div class="sidebar-header">
@@ -54,7 +58,8 @@
                 <div class="sidebar-actions">
                     <button id="new-file-btn" class="icon-btn" onclick="createNewFile()" title="New file" aria-label="New file" data-icon="filePlus"></button>
                     <button id="new-folder-btn" class="icon-btn" onclick="createNewFolder()" title="New folder" aria-label="New folder" data-icon="folderPlus"></button>
-                    <button id="download-btn" class="icon-btn" onclick="downloadSelected()" title="Download selected (Ctrl/⌘-click to select several)" aria-label="Download selected" data-icon="download" disabled></button>
+                    <button id="download-btn" class="icon-btn" onclick="downloadSelected()" title="Download selected (Ctrl/Cmd-click to select several)" aria-label="Download selected" data-icon="download" disabled></button>
+                    <button id="toggle-sidebar-btn" class="icon-btn" onclick="toggleSidebar()" title="Hide files" aria-label="Hide files" data-icon="panelLeft"></button>
                 </div>
             </div>
             <div id="sidebar-extra" class="instructor-only"></div>
@@ -99,15 +104,17 @@
                 <span>Instructions</span>
                 <div class="instructions-actions">
                     <button class="icon-btn" onclick="openInstructionsNewTab()" title="Open in a new tab" aria-label="Open instructions in a new tab" data-icon="external"></button>
-                    <button id="toggle-instructions-btn" class="icon-btn" onclick="toggleInstructionsPane()" title="Hide instructions" aria-label="Hide instructions" data-icon="chevronRight"></button>
+                    <button id="toggle-instructions-btn" class="icon-btn" onclick="toggleInstructionsPane()" title="Hide instructions" aria-label="Hide instructions" data-icon="panelRight"></button>
                 </div>
             </div>
             <div id="instructions-content" class="markdown-body student-only">Loading instructions...</div>
             <div id="instructor-panel" class="instructor-only"></div>
         </aside>
+        <!-- Shown only while the right panel is hidden -->
+        <div class="pane-rail right" id="instructions-rail">
+            <button id="expand-instructions-btn" class="icon-btn" onclick="toggleInstructionsPane()" title="Show instructions" aria-label="Show instructions" data-icon="showRight"></button>
+        </div>
     </main>
-
-    <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Show instructions" data-icon="chevronLeft" data-label="Instructions"></button>
 
     <!-- Exit Confirmation Modal -->
     <div id="exit-modal-backdrop" class="modal-backdrop">
