@@ -49,7 +49,18 @@ body {
     transform: translateX(-50%);
     display: flex;
     align-items: center;
+    gap: 12px;
     z-index: 1;
+}
+
+.save-indicator {
+    font-size: 12px;
+    color: var(--accent-green);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.save-indicator.show {
+    opacity: 1;
 }
 
 .brand { font-weight: 600; font-size: 14px; }
@@ -192,84 +203,43 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     min-height: 0;
 }
 
-/* Layered Editor Styles */
 .editor-wrapper {
     position: relative;
     flex: 1;
-    background: #1e1e1e;
-    overflow: hidden;
     display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-.line-numbers {
-    width: 45px;
-    background: #1e1e1e;
-    color: #858585;
-    font-family: "Courier New", Courier, monospace;
+/* CodeMirror 5 Integration Overrides */
+.CodeMirror {
+    flex: 1;
+    height: auto !important;
+    font-family: Consolas, "Courier New", monospace;
     font-size: 14px;
     line-height: 1.5;
-    padding: 16px 4px 16px 8px;
-    text-align: right;
-    user-select: none;
-    overflow: hidden;
-    box-sizing: border-box;
-    border-right: 1px solid #333;
+    background-color: #212121 !important;
+    color: #eeffff !important;
+}
+.CodeMirror-gutters {
+    background-color: #212121 !important;
+    border-right: 1px solid #333 !important;
+}
+
+/* Status Bar */
+#editor-statusbar {
+    height: 24px;
+    background: var(--toolbar-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 0 12px;
+    font-size: 11px;
+    color: var(--text-muted);
     flex-shrink: 0;
 }
-
-.highlight-layer {
-    position: absolute;
-    top: 0;
-    left: 45px;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-    padding: 16px;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    color: #d4d4d4;
-    background: transparent;
-    pointer-events: none;
-    white-space: pre;
-    overflow: scroll;
-    scrollbar-width: none; /* Firefox */
-    box-sizing: border-box;
-}
-.highlight-layer::-webkit-scrollbar {
-    display: none; /* Chrome/Safari */
-}
-
-#code-editor {
-    position: absolute;
-    top: 0;
-    left: 45px;
-    right: 0;
-    bottom: 0;
-    width: calc(100% - 45px);
-    height: 100%;
-    background: transparent;
-    color: transparent;
-    caret-color: #f0f0f0;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 14px;
-    line-height: 1.5;
-    padding: 16px;
-    border: none;
-    resize: none;
-    outline: none;
-    white-space: pre;
-    overflow: auto;
-    box-sizing: border-box;
-    tab-size: 4;
-}
-
-/* Python Syntax Highlighting Token Colors */
-.py-keyword { color: #c586c0; font-weight: bold; }
-.py-builtin { color: #4ec9b0; }
-.py-string { color: #ce9178; }
-.py-comment { color: #6a9955; font-style: italic; }
-.py-number { color: #b5cea8; }
 
 #terminal-container {
     height: 200px;
