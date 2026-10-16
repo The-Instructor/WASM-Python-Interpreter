@@ -9,8 +9,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- CodeMirror 6 CSS & Bundles via CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 </head>
 <body>
     <header id="toolbar">
@@ -46,7 +44,11 @@
         <!-- CENTER: Editor (Top) & Terminal (Bottom) -->
         <section id="center-pane">
             <div id="editor-container">
-                <div id="code-editor"></div>
+                <div class="editor-wrapper" id="editor-wrapper">
+                    <div class="line-numbers" id="line-numbers">1</div>
+                    <pre class="highlight-layer" id="highlight-layer"><code id="highlight-code"></code></pre>
+                    <textarea id="code-editor" spellcheck="false" placeholder="Select a file..."></textarea>
+                </div>
             </div>
             <!-- Vertical Splitter Handle -->
             <div class="splitter-horizontal" id="vertical-splitter"></div>
@@ -69,12 +71,14 @@
         </aside>
     </main>
 
+    <!-- Floating Expand Button for Instructions when collapsed -->
+    <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Expand Instructions">▶</button>
+
     <!-- xterm.js core & FitAddon CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-    <!-- JSZip via CDN for folder/multi-file zipping -->
+    <!-- JSZip via CDN for zipping -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- CodeMirror 6 ESM bundles via Skypack / ESM -->
-    <script type="module" src="js/app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
