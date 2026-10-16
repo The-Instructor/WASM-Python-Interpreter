@@ -33,12 +33,23 @@ body {
     padding: 0 16px;
     box-sizing: border-box;
     flex-shrink: 0;
+    position: relative;
 }
 
 .toolbar-left, .toolbar-right {
     display: flex;
     align-items: center;
     gap: 10px;
+    z-index: 2;
+}
+
+.toolbar-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    z-index: 1;
 }
 
 .brand { font-weight: 600; font-size: 14px; }
@@ -53,6 +64,7 @@ button {
     transition: opacity 0.2s;
 }
 button:hover { opacity: 0.9; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .tool-btn { background: #3c3c3c; color: white; padding: 6px 10px; }
 .run-btn { background: var(--accent-green); color: white; }
@@ -111,24 +123,53 @@ button:hover { opacity: 0.9; }
     border-bottom: 1px solid var(--border-color);
 }
 
+.sidebar-actions {
+    display: flex;
+    gap: 4px;
+}
+
 .file-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; user-select: text; }
 .file-item {
-    padding: 8px 12px;
+    padding: 6px 12px;
     font-size: 13px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
     color: #cccccc;
+    width: 100%;
+    box-sizing: border-box;
 }
 .file-item:hover { background: #2a2d2e; }
 .file-item.active { background: #37373d; color: white; border-left: 2px solid var(--accent-blue); }
+.file-item.selected { background: #264f78 !important; color: white; }
+
+.file-row-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-actions {
+    display: flex;
+    gap: 2px;
+}
 
 .file-delete { background: none; border: none; color: var(--text-muted); font-size: 12px; cursor: pointer; padding: 2px 6px; }
 .file-delete:hover { color: var(--accent-red); background: transparent; }
 
-#new-file-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); font-size: 11px; padding: 2px 8px; border-radius: 3px; cursor: pointer; }
-#new-file-btn:hover { background: var(--border-color); }
+#new-file-btn, #new-folder-btn { background: transparent; border: 1px solid var(--border-color); color: var(--text-color); font-size: 11px; padding: 2px 6px; border-radius: 3px; cursor: pointer; }
+#new-file-btn:hover, #new-folder-btn:hover { background: var(--border-color); }
+
+.folder-children {
+    padding-left: 12px;
+    list-style: none;
+    margin: 0;
+}
 
 /* Center Pane (Editor + Terminal Stack) */
 #center-pane {
@@ -143,22 +184,27 @@ button:hover { opacity: 0.9; }
     flex: 1;
     min-height: 100px;
     display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 #code-editor {
     width: 100%;
     height: 100%;
-    background: #1e1e1e;
-    color: #d4d4d4;
+    overflow: hidden;
+}
+
+/* CodeMirror customization */
+.cm-editor {
+    height: 100%;
+    background-color: #1e1e1e !important;
+    color: #d4d4d4 !important;
+}
+.cm-scroller {
+    overflow: auto;
     font-family: "Courier New", Courier, monospace;
     font-size: 14px;
-    padding: 16px;
-    border: none;
-    resize: none;
-    outline: none;
     line-height: 1.5;
-    box-sizing: border-box;
-    user-select: text;
 }
 
 #terminal-container {
@@ -168,6 +214,7 @@ button:hover { opacity: 0.9; }
     background: #181818;
     padding: 8px;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Right Pane: Instructions */
@@ -181,6 +228,21 @@ button:hover { opacity: 0.9; }
     overflow-y: auto;
     flex-shrink: 0;
     user-select: text;
+    transition: width 0.2s ease;
+}
+#instructions-pane.collapsed {
+    width: 40px !important;
+    min-width: 40px !important;
+    overflow: hidden;
+}
+#instructions-pane.collapsed .instructions-header span,
+#instructions-pane.collapsed .instructions-header .instructions-actions button:not(#toggle-instructions-btn),
+#instructions-pane.collapsed #instructions-content {
+    display: none;
+}
+#instructions-pane.collapsed .instructions-header {
+    justify-content: center;
+    padding: 12px 4px;
 }
 
 .instructions-header {
@@ -192,6 +254,16 @@ button:hover { opacity: 0.9; }
     color: var(--text-muted);
     border-bottom: 1px solid var(--border-color);
     font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.instructions-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
 }
 
 .markdown-body {
@@ -199,6 +271,8 @@ button:hover { opacity: 0.9; }
     font-size: 14px;
     line-height: 1.6;
     color: #d4d4d4;
+    overflow-y: auto;
+    flex: 1;
 }
 .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: #ffffff; margin-top: 0; }
 .markdown-body code { background: #2d2d2d; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
