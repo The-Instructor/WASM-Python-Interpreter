@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Assignment Workspace</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- CodeMirror 5 CSS & Themes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
     <!-- xterm.js stylesheets -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <header id="toolbar">
@@ -18,6 +24,7 @@
         </div>
         <div class="toolbar-center">
             <button id="action-btn" class="run-btn" onclick="toggleExecution()">▶ Run Code</button>
+            <span id="save-indicator" class="save-indicator">Saved</span>
         </div>
         <div class="toolbar-right">
             <button id="exit-btn" class="exit-btn" onclick="returnToCourse()">✕ Exit Lab</button>
@@ -45,9 +52,13 @@
         <section id="center-pane">
             <div id="editor-container">
                 <div class="editor-wrapper" id="editor-wrapper">
-                    <div class="line-numbers" id="line-numbers">1</div>
-                    <pre class="highlight-layer" id="highlight-layer"><code id="highlight-code"></code></pre>
-                    <textarea id="code-editor" spellcheck="false" placeholder="Select a file..."></textarea>
+                    <textarea id="code-editor-textarea"></textarea>
+                </div>
+                <div id="editor-statusbar">
+                    <span id="status-cursor">Ln 1, Col 1</span>
+                    <span id="status-selection"></span>
+                    <span id="status-indent">Spaces: 4</span>
+                    <span id="status-mode">Python</span>
                 </div>
             </div>
             <!-- Vertical Splitter Handle -->
@@ -73,6 +84,26 @@
 
     <!-- Floating Expand Button for Instructions when collapsed -->
     <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Expand Instructions">▶</button>
+
+    <!-- CodeMirror 5 Core & Addons CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/trailingspace.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/match-highlighter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/continuation.min.js"></script>
 
     <!-- xterm.js core & FitAddon CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
