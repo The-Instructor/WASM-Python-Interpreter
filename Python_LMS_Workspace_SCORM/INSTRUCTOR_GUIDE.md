@@ -56,12 +56,27 @@ The workspace opens in **Instructor** mode with a sample lab (Temperature Conver
 Click the **eye** (Student preview) in the toolbar to see exactly what students get. Nothing is sent to D2L. Click the **pencil** (Instructor) to go back.
 
 ## 6. Publish to D2L
+**Export the package**
 1. Click **Publish** and fix anything the checklist flags.
 2. Click **📦 Export for D2L (.zip)**. This makes the *student* package.
-3. In D2L **Content**, upload that .zip as a SCORM package (newer D2L calls it a **SCORM/xAPI object**).
-4. When D2L asks about a grade item, say **Yes**. Scores are out of 100.
-5. If D2L asks about **review/retake**, turn it on so students can keep improving their score.
-6. Check it with a **test student account**. D2L's *View as Student* runs the activity but doesn't save grades.
+
+**Upload it to D2L** (Content → upload as a SCORM package; newer D2L calls it a **SCORM/xAPI object**). Choose:
+
+| D2L option | Choose | Why |
+|---|---|---|
+| Player | **Open player in new window** | The editor gets the full screen. |
+| Navigation | **Use built in navigation** | It's a single activity; nothing to navigate. |
+| Review/Retake | **Add review/retake** | Students can come back and improve their score. |
+
+**Add it to your course** (pick the package from the list). Choose:
+
+| D2L option | Choose | Why |
+|---|---|---|
+| Grade item | **Yes**, calculation **Highest Attempt** | Best try counts. Use **Last Attempt** if Settings says *latest score counts*. |
+| Version control | **Always display the latest version** | Fixes you upload reach students automatically. |
+| Open in | **New window** | Same as the player choice above. |
+
+**Check it** with a test student account. D2L's *View as Student* runs the activity but doesn't save grades.
 
 Only upload zips made with **Export for D2L**. The workspace download itself includes your solutions.
 
@@ -82,7 +97,7 @@ Only upload zips made with **Export for D2L**. The workspace download itself inc
 2. Download the zip from section 1 again and unzip it into a **new** folder.
 3. Open it with the start file (section 2), then use **Project → Open…** to load your saved project.
 
-Packages you already uploaded to D2L keep working. To give students the new version, export again and replace the activity in D2L.
+Packages you already uploaded to D2L keep working. To give students the new version, export again and upload it as a new version of the same package; with **Always display the latest version**, students get it automatically.
 
 ## About test security
 Tests run in the student's browser. They are encoded, never shown in the file tree, and run in a fresh Python each time, so casual tampering doesn't work. A determined student with browser developer tools could still fake a score. For high-stakes work, also collect their downloaded .zip in a D2L Assignment folder and spot-check it.

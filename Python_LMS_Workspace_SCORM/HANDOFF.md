@@ -143,6 +143,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | Recorded the recommended D2L upload settings (new window, built-in navigation, add review/retake, grade item Yes + Highest Attempt, always latest version) in INSTRUCTOR_GUIDE.md and the in-app Publish tab. |
 | 2026-10-16 | Rewrote INSTRUCTOR_GUIDE.md: short steps, current button names, what the start script does, D2L grade-item/review-retake answers, new "Update to a new version" section. |
 | 2026-10-16 | Workflow: changes go to the repo only; the instructor's local folder is no longer synced. |
 | 2026-10-16 | **Terminal shell** (Linux-style commands with permissions; runtime files now appear in the tree), **light/dark theme** following the device with a System/Light/Dark menu, and a **modern UI**: token-based styles, SVG icons, Project dropdown, segmented switches, softer shadows, quieter file tree. Verified in the browser: shell + protections in Instructor, Preview and an exported package under a mock SCORM API; tests on solution 7/7; interactive input; score commit. E2E suite updated (Project menu, lock icon, 3 shell checks) but **not re-run** (needs the local CDN mirror described in dev/e2e). |
