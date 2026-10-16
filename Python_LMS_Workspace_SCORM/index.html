@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Python Assignment Workspace</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- xterm.js stylesheet -->
+    <!-- xterm.js stylesheets -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- CodeMirror 6 CSS & Bundles via CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
 </head>
 <body>
     <header id="toolbar">
@@ -16,8 +18,10 @@
             <button id="toggle-sidebar-btn" class="tool-btn" onclick="toggleSidebar()" title="Toggle File Tree">📁 Files</button>
             <div class="brand">Python Lab Workspace</div>
         </div>
-        <div class="toolbar-right">
+        <div class="toolbar-center">
             <button id="action-btn" class="run-btn" onclick="toggleExecution()">▶ Run Code</button>
+        </div>
+        <div class="toolbar-right">
             <button id="exit-btn" class="exit-btn" onclick="returnToCourse()">✕ Exit Lab</button>
         </div>
     </header>
@@ -27,7 +31,11 @@
         <aside id="file-sidebar">
             <div class="sidebar-header">
                 <span>Explorer</span>
-                <button id="new-file-btn" onclick="createNewFile()">+ File</button>
+                <div class="sidebar-actions">
+                    <button id="new-file-btn" onclick="createNewFile()" title="New File">+ File</button>
+                    <button id="new-folder-btn" onclick="createNewFolder()" title="New Folder">+ Folder</button>
+                    <button id="download-btn" class="tool-btn" onclick="downloadSelected()" title="Download Selected" disabled>📥</button>
+                </div>
             </div>
             <ul id="file-list" class="file-list"></ul>
         </aside>
@@ -38,7 +46,7 @@
         <!-- CENTER: Editor (Top) & Terminal (Bottom) -->
         <section id="center-pane">
             <div id="editor-container">
-                <textarea id="code-editor" oninput="updateActiveFileContent()" placeholder="Select a file from the sidebar..."></textarea>
+                <div id="code-editor"></div>
             </div>
             <!-- Vertical Splitter Handle -->
             <div class="splitter-horizontal" id="vertical-splitter"></div>
@@ -50,12 +58,23 @@
 
         <!-- RIGHT: Assignment Instructions (Markdown) -->
         <aside id="instructions-pane">
-            <div class="instructions-header">Assignment Instructions</div>
+            <div class="instructions-header">
+                <span>Assignment Instructions</span>
+                <div class="instructions-actions">
+                    <button class="tool-btn" onclick="openInstructionsNewTab()" title="Open in new tab">↗ New Tab</button>
+                    <button id="toggle-instructions-btn" class="tool-btn" onclick="toggleInstructionsPane()" title="Collapse instructions" aria-label="Collapse instructions">◀</button>
+                </div>
+            </div>
             <div id="instructions-content" class="markdown-body">Loading instructions...</div>
         </aside>
     </main>
 
+    <!-- xterm.js core & FitAddon CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-    <script src="js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <!-- JSZip via CDN for folder/multi-file zipping -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- CodeMirror 6 ESM bundles via Skypack / ESM -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>
