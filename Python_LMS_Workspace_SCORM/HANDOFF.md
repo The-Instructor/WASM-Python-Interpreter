@@ -3,58 +3,121 @@
 _Last updated: 2026-10-16_
 
 ## Purpose
-A SCORM 1.2 package that instructors use as a **template** to build, test, and auto-grade
-Python assignments in **D2L Brightspace**. Students get an in-browser IDE (editor, terminal,
-instructions); Python runs client-side via Pyodide (WASM). Goal: give instructors a guided
-workspace for (1) writing assignment instructions, (2) testing assignments, (3) running
-automated tests that report a grade to D2L.
+A SCORM 1.2 template that instructors use to **author, test and auto-grade** Python assignments for **D2L Brightspace**. Python runs in the browser through Pyodide (WASM).
+
+* **Instructor Mode:** used inside the template to build an assignment, check it, and **export** a student package.
+* **Student package:** the exported zip, which reports scores to D2L.
+
+Priorities set by the instructor:
+
+1. Students must not be able to tamper with tests or instructions.
+2. Setup must be easy and low-maintenance, with a smooth UX.
+3. Instructor Mode is used to set up and preview assignments.
 
 ## Sources of truth
 | What | Where |
 |---|---|
-| Repo | https://github.com/The-Instructor/WASM-Python-Interpreter (branch `main`) |
+| Repo | https://github.com/The-Instructor/WASM-Python-Interpreter (`main`) |
 | Project folder in repo | `Python_LMS_Workspace_SCORM/` |
 | Instructor's local copy | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-main/Python_LMS_Workspace_SCORM` |
-| D2L upload | `Python_Workspace.zip` in the local folder (instructor-built; **not tracked**, ignore it) |
+| Old D2L zip (`Python_Workspace.zip`) | Instructor's own file. **Ignore it; it is not tracked** (see `.gitignore`). |
+| E2E tests | `dev/e2e/` (repo only; see the README there) |
 
-**Rule:** the repo holds the latest *working* version of every project file. After each
-verified change, sync local folder ⇄ repo and update this file.
+**Rule:** the repo holds the latest *working* version. After each verified change, sync the local folder with the repo and update this file.
 
-## File map
-| File | Role |
-|---|---|
-| `imsmanifest.xml` | SCORM 1.2 manifest, one SCO → `index.html`. Instructors declare starter files as `<file href="..."/>` in the marked block. |
-| `index.html` | Layout: toolbar (Files / Run / Exit), file tree, CodeMirror editor + status bar, xterm terminal, Markdown instructions pane, exit modal. All libs via CDN. |
-| `css/styles.css` | VS Code–style dark theme, splitters, modal, CodeMirror `vscode-dark` theme. |
-| `js/app.js` | All UI logic: manifest-driven starter-file discovery, in-memory virtual FS, file tree CRUD, downloads (JSZip), splitters, traceback line highlighting, worker lifecycle. |
-| `js/worker.js` | Pyodide 0.27.3 Web Worker. `sync` mirrors virtual FS into `/workspace`; `run` executes the chosen `.py` via `runPythonAsync`. Stop = terminate + respawn. |
-| `instructions.md` | Placeholder assignment text rendered in the right pane. |
-| `HANDOFF.md` | This file. Not declared in the manifest; harmless if zipped. |
+## Architecture
+```
+Template folder (instructor)                 Exported student package (D2L)
+├─ index.html, css/, js/app.js  ──────────►  same core files
+├─ js/worker.js, js/harness.py, js/scorm.js  (index.html body gets data-package="1")
+├─ js/instructor.js        (template only)   ✗ not exported
+├─ assignment/assignment.json  ┐             assignment.dat  (settings + tests + files,
+├─ assignment/instructions.md  ├─ export ──►   XOR+base64 encoded; no solutions)
+├─ assignment/files/<path>     │             imsmanifest.xml (generated)
+├─ assignment/solution/<path>  ┘ ✗ never exported
+└─ imsmanifest.xml (template manifest), Start-Instructor-Workspace-{Mac.command,Windows.bat}
+```
+**How `js/app.js` finds the assignment:**
 
-## Current state (baseline)
-- Local folder and repo `main` @ `04c44d0` were **byte-identical** on 2026-10-16 (all 6 project files).
-- Working: editing, multi-file/folder tree, run/stop, stdout/stderr to terminal,
-  error-line highlight, per-file and full-workspace zip download, collapsible panes.
+1. `body[data-package]` is present → load `assignment.dat` (student mode, SCORM on).
+2. Otherwise → load `assignment/assignment.json` (template); load `js/instructor.js`; start in Instructor Mode.
+3. Otherwise → **legacy**: read the `<file>` tags in `imsmanifest.xml` plus a root `instructions.md`. This keeps old packages working.
 
-## Known gaps (not yet implemented)
-1. **No SCORM runtime calls** — no `LMSInitialize`/`LMSSetValue`/`LMSCommit`/`LMSFinish`; D2L receives no score or completion.
-2. **No test runner / grading config** — nowhere to define, run, weight, or report tests.
-3. **No instructor workflow** — no authoring mode, reference-solution check, or packaging/validation step; starter files are hand-declared in the manifest.
-4. **`input()` unsupported** — terminal is output-only (no stdin bridge).
-5. **Minor:** `marked.js` CDN URL is unpinned; package requires internet (all CDN); multi-file imports rely on `/workspace` being cwd.
-6. **Security note:** any client-side grading is visible/spoofable by students; design must state the trust level.
+**Modes:** `instructor`, `preview` (exactly what students see, with no SCORM), and `student`.
 
-## Open design decisions (awaiting instructor)
-1. Grading trust level: practice/low-stakes vs. hidden/obfuscated tests + submission export.
-2. Test style: stdin→stdout I/O cases, pytest-style asserts, or both (with point weights).
-3. Instructor UX: built-in hidden **Instructor Mode** (edit instructions/tests, validate against reference solution, export D2L zip) vs. documented `assignment.json` + packaging script.
+**File roles:**
 
-## Next steps
-1. Get answers to the open decisions above.
-2. Write architecture proposal (SCORM API wrapper, test-config schema, grader in worker, instructor flow).
-3. Implement incrementally; verify each step in a browser; commit to `main`; update this file.
+* `starter`: editable by students.
+* `readonly`: visible to students but locked. The editor is read-only, the file is `chmod 444` in the Pyodide FS, and it is restored before every test.
+* `hidden`: never shown to students. It exists only in the grader's file system.
+
+**Run Code:** runs in the persistent `worker.js` through `harness._ws_run`.
+
+* `input()` is interactive and uses a **replay model**. When the program asks for input, it stops. The student types a line, and the program is re-run with all inputs so far; output already shown is skipped. `random` is seeded per session so replays are deterministic.
+* Workspace modules are purged before each run, so edits to helper modules take effect.
+
+**Grading (`runTestSuite` in app.js):**
+
+* A **fresh grader worker** starts each time tests run.
+* For each test, the file set is re-synced. The student's files are used, with read-only and hidden files overlaid.
+* The worker calls `harness._ws_grade`. Builtins are reset, cached modules are cleared, imports of `js`/`pyodide` are blocked, and stdin is fed from the test. Prompts are not echoed.
+* The result is matched to the request with a nonce. If a test exceeds its time limit, the main thread terminates the worker, marks the test failed, and starts a new worker for the next test.
+* **Comparison happens in JS.** Output tests support `normalized`, `contains`, `exact` and `regex` matching. Function tests compare canonical values with a float tolerance. Custom code tests pass when no assertion fails.
+
+**SCORM (`js/scorm.js`):**
+
+* On load: `LMSInitialize`, then status is set to `incomplete`.
+* Each time tests run: `score.raw/min/max` and `lesson_status` are set. Status is `passed`/`failed` if a passing score is set, otherwise `completed`. `suspend_data` stores `{best,last,runs}`.
+* Grade policy is `best` (the default) or `last`. The best score is also seeded from the existing `score.raw`.
+* On exit: `exit=suspend`, `session_time`, then `LMSFinish`.
+
+**Student conveniences:** work autosaves to `localStorage` under the key `pyws:work:<id>:<title>`. Students can reset a single file to the starter code, and a "Start over" banner appears when saved work is restored.
+
+## Instructor Mode features (`js/instructor.js`)
+* **Toolbar:** ✚ New, 📂 Open (a project zip or an exported package), 💾 Save Project (full zip including solutions), 📦 Publish, and the ✎ Instructor / 👁 Student Preview switch.
+* **File tree:** S/R/H role badges (click to change), a ★ marker on files with a solution, and upload or drag-and-drop.
+* **Editor header:** a Starter / ★ Solution toggle, with prompts to create or remove a solution version.
+* **Tabs:**
+  * **Instructions:** Markdown editor with a preview.
+  * **Tests:** add, edit, reorder, duplicate and delete tests; run one test or all tests against the solution or the starter; **Fill from solution** for expected values; status chips that show when results are stale.
+  * **Settings:** title, entry file, passing score, grade policy, whether students can create files.
+  * **Publish:** checklist, export, and D2L steps.
+* **Drafts:** the project autosaves to `localStorage` under the key `pyws:instructor-draft:<path>`. A banner offers "Discard draft".
+* **Export:** if the project still has the sample's id (`sample-assignment`), export generates a new id so student autosave keys don't collide between packages.
+
+## Current state
+* **Done and verified:** 43/43 automated E2E checks pass in headless Chromium against the real Pyodide 0.27.3 runtime, with a mock D2L SCORM API. They cover:
+  * instructor boot
+  * validating tests against the solution and the starter
+  * fill from solution
+  * the checklist
+  * preview
+  * export contents
+  * save/open round trip
+  * opening an exported package
+  * the student package in an iframe with the SCORM API
+  * starter scores 0%; the solution with tamper attempts scores 100%
+  * the best-score policy
+  * infinite-loop timeouts
+  * interactive input
+  * helper-module reload
+  * traceback highlighting
+  * autosave and restore
+  * `LMSFinish`
+  * legacy packages
+* **Sample assignment:** Temperature Converter. It has 7 tests worth 9 points and uses all three file roles.
+* **Not yet verified on real D2L or a real CDN:** the sandbox had no CDN access, so tests used local copies with an xterm stub. **Next step: the instructor should run the template locally, export, upload to a D2L sandbox course, and confirm the grade item updates.**
+
+## Known limitations / ideas
+1. Client-side grading is tamper-*resistant*, not tamper-proof. A student with devtools can call `API.LMSSetValue` directly. This is documented in INSTRUCTOR_GUIDE.md, with a mitigation: also collect the downloaded zip.
+2. The replay input model assumes deterministic programs. Time-based output may differ between replays.
+3. Files that a student's program creates at runtime are not added to the file tree, and they are removed on the next sync.
+4. Everything loads from CDNs (jsdelivr, cdnjs), so students need internet access. Vendoring the libraries is possible if needed (~10 MB for Pyodide).
+5. Empty folders aren't saved in projects.
+6. No per-test `stdin` for Run Code presets, and no attempt limits.
 
 ## Change log
-| Date | Commit | Change |
-|---|---|---|
-| 2026-10-16 | — | Confirmed local == repo baseline (`04c44d0`). Added HANDOFF.md. |
+| Date | Change |
+|---|---|
+| 2026-10-16 | Confirmed the local folder matches the repo baseline (`04c44d0`). Added HANDOFF.md. |
+| 2026-10-16 | **v2 architecture:** Instructor Mode, autograder (output, function and custom code tests), SCORM 1.2 reporting, file roles, interactive `input()`, student autosave, export/save/open, sample assignment, start scripts, INSTRUCTOR_GUIDE.md, E2E suite (`dev/e2e`). Pinned `marked@12.0.2`. Moved `instructions.md` to `assignment/`. |

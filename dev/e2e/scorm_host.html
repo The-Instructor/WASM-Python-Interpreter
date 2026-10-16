@@ -1,0 +1,16 @@
+<!DOCTYPE html><html><head><title>Mock D2L</title></head><body style="margin:0">
+<script>
+  window.scormLog = [];
+  const store = { "cmi.core.lesson_status": "not attempted", "cmi.core.student_name": "Doe, Jane" };
+  window.scormStore = store;
+  window.API = {
+    LMSInitialize: () => { scormLog.push(['init']); return "true"; },
+    LMSGetValue: (k) => store[k] ?? "",
+    LMSSetValue: (k, v) => { scormLog.push(['set', k, v]); store[k] = v; return "true"; },
+    LMSCommit: () => { scormLog.push(['commit']); return "true"; },
+    LMSFinish: () => { scormLog.push(['finish']); return "true"; },
+    LMSGetLastError: () => "0", LMSGetErrorString: () => "", LMSGetDiagnostic: () => ""
+  };
+</script>
+<iframe id="sco" src="/pkg/index.html" style="width:100vw;height:100vh;border:0"></iframe>
+</body></html>

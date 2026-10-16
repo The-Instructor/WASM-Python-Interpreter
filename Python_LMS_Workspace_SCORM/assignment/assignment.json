@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "id": "sample-assignment",
+  "title": "Sample Lab: Temperature Converter",
+  "entry": "main.py",
+  "passingScore": 0,
+  "gradePolicy": "best",
+  "allowNewFiles": true,
+  "files": [
+    { "path": "main.py", "role": "starter", "solution": true },
+    { "path": "data/readings.csv", "role": "readonly", "solution": false },
+    { "path": "tests/hidden_readings.csv", "role": "hidden", "solution": false }
+  ],
+  "tests": [
+    {
+      "id": "t-c2f-boiling", "name": "c_to_f(100) returns 212.0", "type": "function",
+      "points": 1, "hidden": false, "call": "c_to_f(100)", "expected": "212.0", "tolerance": 0.001, "timeout": 5
+    },
+    {
+      "id": "t-c2f-neg40", "name": "c_to_f(-40) returns -40.0", "type": "function",
+      "points": 1, "hidden": false, "call": "c_to_f(-40)", "expected": "-40.0", "tolerance": 0.001, "timeout": 5
+    },
+    {
+      "id": "t-f2c-boiling", "name": "f_to_c(212) returns 100.0", "type": "function",
+      "points": 1, "hidden": false, "call": "f_to_c(212)", "expected": "100.0", "tolerance": 0.001, "timeout": 5
+    },
+    {
+      "id": "t-output", "name": "Program prints the conversion", "type": "output",
+      "points": 2, "hidden": false, "stdin": "25", "expected": "25.0 C = 77.0 F\n", "match": "normalized", "timeout": 5
+    },
+    {
+      "id": "t-avg-sample", "name": "average_f on data/readings.csv", "type": "function",
+      "points": 1, "hidden": false, "call": "average_f(\"data/readings.csv\")", "expected": "68.0", "tolerance": 0.05, "timeout": 5
+    },
+    {
+      "id": "t-avg-hidden", "name": "average_f on a different data file", "type": "function",
+      "points": 2, "hidden": true, "call": "average_f(\"tests/hidden_readings.csv\")", "expected": "86.0", "tolerance": 0.05, "timeout": 5
+    },
+    {
+      "id": "t-uses-func", "name": "Main program calls c_to_f()", "type": "code",
+      "points": 1, "hidden": false,
+      "code": "main_part = source.split('__main__')[-1]\nassert 'c_to_f(' in main_part, 'Call c_to_f() in the main program instead of repeating the formula'",
+      "timeout": 5
+    }
+  ]
+}

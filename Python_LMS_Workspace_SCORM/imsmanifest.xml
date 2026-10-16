@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- ======================================================================
+     TEMPLATE manifest (Instructor Mode).
+     You do NOT need to edit this file. Build assignments in Instructor Mode
+     and use  Publish -> Export for D2L  - the exported .zip gets its own
+     manifest automatically. Upload this template to D2L only if you want an
+     instructor sandbox there.
+     ====================================================================== -->
 <manifest identifier="PythonAssignmentTemplate" version="1.2"
           xmlns="http://www.imsproject.org/xsd/imscp_rootv1p1p2"
           xmlns:adlcp="http://www.adlnet.org/xsd/adlcp_rootv1p2"
@@ -11,7 +18,7 @@
   </metadata>
   <organizations default="python_workspace_org">
     <organization identifier="python_workspace_org">
-      <title>Python Assignment Workspace</title>
+      <title>Python Assignment Workspace (Instructor Template)</title>
       <item identifier="item_1" identifierref="resource_1">
         <title>Python Lab Activity</title>
       </item>
@@ -19,24 +26,20 @@
   </organizations>
   <resources>
     <resource identifier="resource_1" type="webcontent" adlcp:scormtype="sco" href="index.html">
-      <!-- Core Application System Files (Do not modify) -->
       <file href="imsmanifest.xml"/>
       <file href="index.html"/>
-      <file href="instructions.md"/>
       <file href="css/styles.css"/>
       <file href="js/app.js"/>
       <file href="js/worker.js"/>
-
-      <!-- ==================================================================== -->
-      <!-- INSTRUCTOR STARTER FILES:                                           -->
-      <!-- Drop your starter files into the project root folder, then declare  -->
-      <!-- them below. Every file uses the exact same <file> tag format.       -->
-      <!-- Examples:                                                           -->
-      <!-- <file href="solution.py"/>                                          -->
-      <!-- <file href="data.csv"/>                                             -->
-      <!-- <file href="README.txt"/>                                           -->
-      <!-- ==================================================================== -->
-      
+      <file href="js/harness.py"/>
+      <file href="js/scorm.js"/>
+      <file href="js/instructor.js"/>
+      <file href="assignment/assignment.json"/>
+      <file href="assignment/instructions.md"/>
+      <file href="assignment/files/main.py"/>
+      <file href="assignment/files/data/readings.csv"/>
+      <file href="assignment/files/tests/hidden_readings.csv"/>
+      <file href="assignment/solution/main.py"/>
     </resource>
   </resources>
 </manifest>
