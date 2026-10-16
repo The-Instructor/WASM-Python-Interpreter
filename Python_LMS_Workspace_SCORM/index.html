@@ -6,10 +6,8 @@
     <title>Python Assignment Workspace</title>
     <!-- CodeMirror 5 CSS & Themes -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css">
     <!-- xterm.js stylesheets -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <!-- Marked.js for Markdown Rendering -->
@@ -21,13 +19,13 @@
         <div class="toolbar-left">
             <button id="toggle-sidebar-btn" class="tool-btn" onclick="toggleSidebar()" title="Toggle File Tree">📁 Files</button>
             <div class="brand">Python Lab Workspace</div>
+            <span id="save-indicator" class="save-indicator">Synced to runtime</span>
         </div>
         <div class="toolbar-center">
             <button id="action-btn" class="run-btn" onclick="toggleExecution()">▶ Run Code</button>
-            <span id="save-indicator" class="save-indicator">Saved</span>
         </div>
         <div class="toolbar-right">
-            <button id="exit-btn" class="exit-btn" onclick="returnToCourse()">✕ Exit Lab</button>
+            <button id="exit-btn" class="exit-btn" onclick="showExitModal()" title="Exit Lab">✕ Exit Lab</button>
         </div>
     </header>
 
@@ -55,6 +53,7 @@
                     <textarea id="code-editor-textarea"></textarea>
                 </div>
                 <div id="editor-statusbar">
+                    <span id="status-filename"></span>
                     <span id="status-cursor">Ln 1, Col 1</span>
                     <span id="status-selection"></span>
                     <span id="status-indent">Spaces: 4</span>
@@ -63,7 +62,9 @@
             </div>
             <!-- Vertical Splitter Handle -->
             <div class="splitter-horizontal" id="vertical-splitter"></div>
-            <div id="terminal-container"></div>
+            <div id="terminal-container">
+                <div id="terminal-host"></div>
+            </div>
         </section>
 
         <!-- Instructions Splitter Handle -->
@@ -85,6 +86,23 @@
     <!-- Floating Expand Button for Instructions when collapsed -->
     <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Expand Instructions">▶</button>
 
+    <!-- Exit Confirmation Modal Backdrop -->
+    <div id="exit-modal-backdrop" class="modal-backdrop">
+        <div id="exit-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h3 id="modal-title">Exit Lab</h3>
+            <p id="modal-text">Your work will be lost when you exit. Download your files before leaving.</p>
+            <div class="modal-options">
+                <!-- Clear saved work checkbox placeholder -->
+                <label hidden><input type="checkbox" id="clear-storage-checkbox" checked> Clear saved work from this device</label>
+            </div>
+            <div class="modal-actions">
+                <button id="modal-download-btn" class="tool-btn" onclick="modalDownloadWork()">Download my work (.zip)</button>
+                <button id="modal-exit-btn" class="stop-btn" onclick="modalExitAnyway()">Exit anyway</button>
+                <button id="modal-cancel-btn" class="tool-btn" onclick="hideExitModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- CodeMirror 5 Core & Addons CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
@@ -97,13 +115,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/anyword-hint.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/search.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/jump-to-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/continuation.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/keymap/sublime.min.js"></script>
 
     <!-- xterm.js core & FitAddon CDN -->
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
