@@ -73,10 +73,20 @@ Template folder (instructor)                 Exported student package (D2L)
 * Grade policy is `best` (the default) or `last`. The best score is also seeded from the existing `score.raw`.
 * On exit: `exit=suspend`, `session_time`, then `LMSFinish`.
 
+**Terminal shell (`_ws_shell` in harness.py; line editing in app.js "Terminal shell"):**
+
+* A small Linux-style shell over the real Pyodide file system, shown as `/home/student` (`~`). Commands: `ls -la`, `cd`, `pwd`, `cat`, `head`/`tail -n`, `wc`, `grep -invcrlwE` (basic regex unless `-E`), `find -name/-type`, `tree`, `which`, `echo`, `touch`, `mkdir -p`, `rm -r`, `rmdir`, `cp -r`, `mv`, `chmod` (octal or `u+x`), `whoami`, `help`, `python file.py`; JS handles `history` and `clear`. Pipes, `>`/`>>`, `;` and `&&` work, and quoted text is never globbed.
+* The prompt, cursor keys, Up/Down history, Tab completion (from the file tree) and Ctrl+C/L/A/E/U run in JS. Keys typed while a command runs are buffered and replayed.
+* Rules come from each `sync`: `readonly` files can't be written, moved, removed or chmod'ed; `keep` (assignment files, student modes only) can be edited but not removed. The shell can't leave `/workspace`. Instructor mode has no restrictions.
+* **File changes flow back:** after every shell command and every finished run, `worker.js` diffs `/workspace` against the last sync (`diffFS`) and `applyFsChanges` folds new/changed/removed files into the tree under the usual rules (protected files, `allowNewFiles`, no shadowing package files). Anything rejected is reverted by re-syncing. Files over 2 MB aren't adopted. `sys.dont_write_bytecode` keeps `__pycache__` out; `umask 022` gives normal permissions.
+* Each input replay re-syncs first, so a program that appends to a file doesn't append twice.
+
+**Theme and UI kit (top of app.js):** `data-theme` on `<html>` is set by an inline script in `index.html` before first paint, from `localStorage['pyws:theme']` (`system` | `light` | `dark`, default `system`, which follows `prefers-color-scheme` live). All colors are tokens in `css/styles.css` (`:root`/`[data-theme=dark]` and `[data-theme=light]`), including CodeMirror syntax colors; xterm gets its palette from `terminalTheme()`. Icons are inline SVG (`ICON_PATHS`, `icon()`), buttons are set with `setBtn()`, and `menuButton()` is the accessible dropdown (arrow keys, Esc, click-outside). `App.icon/setBtn/menuButton` are exposed for instructor.js.
+
 **Student conveniences:** work autosaves to `localStorage` under the key `pyws:work:<id>:<title>`. Students can reset a single file to the starter code, and a "Start over" banner appears when saved work is restored.
 
 ## Instructor Mode features (`js/instructor.js`)
-* **Toolbar:** ✚ New, 📂 Open (a project zip or an exported package), 💾 Save Project (full zip including solutions), 📦 Publish, and the ✎ Instructor / 👁 Student Preview switch.
+* **Toolbar:** Instructor / Student preview switch, a **Project** menu (New assignment, Open…, Save Project), and **Publish**. Students see only Run, Run Tests, theme and Exit.
 * **File tree:** S/R/H role badges (click to change), a ★ marker on files with a solution, and upload or drag-and-drop.
 * **Editor header:** a Starter / ★ Solution toggle, with prompts to create or remove a solution version.
 * **Tabs:**
@@ -121,14 +131,17 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Known limitations / ideas
 1. Client-side grading is tamper-*resistant*, not tamper-proof. A student with devtools can call `API.LMSSetValue` directly. This is documented in INSTRUCTOR_GUIDE.md, with a mitigation: also collect the downloaded zip.
 2. The replay input model assumes deterministic programs. Time-based output may differ between replays.
-3. Files that a student's program creates at runtime are not added to the file tree, and they are removed on the next sync.
+3. ~~Runtime-created files aren't added to the tree~~ — fixed: they are adopted (see Terminal shell). Files a program creates are still kept only if the assignment allows new files.
 4. Everything loads from CDNs (jsdelivr, cdnjs), so students need internet access. Vendoring the libraries is possible if needed (~10 MB for Pyodide).
 5. Empty folders aren't saved in projects.
 6. No per-test `stdin` for Run Code presets, and no attempt limits.
+7. The shell is simulated: no environment variables, `$(...)`, `||`, background jobs, or interactive Python REPL. `chmod` changes stick for the session but aren't saved with student work.
+8. The in-app browser pane used for checking sometimes doesn't repaint after a theme switch; the page state is correct (verified with computed styles). Not seen in normal browsers.
 
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | **Terminal shell** (Linux-style commands with permissions; runtime files now appear in the tree), **light/dark theme** following the device with a System/Light/Dark menu, and a **modern UI**: token-based styles, SVG icons, Project dropdown, segmented switches, softer shadows, quieter file tree. Verified in the browser: shell + protections in Instructor, Preview and an exported package under a mock SCORM API; tests on solution 7/7; interactive input; score commit. E2E suite updated (Project menu, lock icon, 3 shell checks) but **not re-run** (needs the local CDN mirror described in dev/e2e). |
 | 2026-10-16 | Recorded the first D2L upload test. In View as Student, D2L accepts the score commit, but no grade is recorded (expected). |
 | 2026-10-16 | Added the instructor release zip: `dev/build_release.py`, the `release-zip` GitHub Action (`template-latest` release), a root README.md with the download link, and a download step in INSTRUCTOR_GUIDE.md. |
 | 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). Instructor set up GitHub credentials and pushed; `origin/main` now includes v2. |

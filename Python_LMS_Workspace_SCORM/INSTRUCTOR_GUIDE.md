@@ -13,7 +13,9 @@ The workspace has to run from a small local web server, not by double-clicking `
 
 Your browser opens at `http://localhost:8765`. Keep the terminal window open while you work.
 
-The template opens in **✎ Instructor** mode with a sample lab (Temperature Converter). Explore it first, then click **✚ New** to start your own assignment.
+The template opens in **Instructor** mode with a sample lab (Temperature Converter). Explore it first, then choose **Project → New assignment** to start your own.
+
+The workspace follows your computer's light or dark setting. Use the theme button (sun/moon) in the toolbar to pick **System**, **Light** or **Dark**.
 
 ## 2. Build the assignment
 | Where | What you do |
@@ -50,13 +52,13 @@ Input prompts are **not** part of the expected output. If `input("Name? ")` read
 **Before publishing,** click **▶ Run all on solution**. Every test should pass. Then click **▶ Run all on starter** to confirm the starter code doesn't already earn full marks.
 
 ## 4. Preview as a student
-Click **👁 Student Preview** in the toolbar. You see exactly what students get: starter files, read-only locks, the instructions, and test results with hidden tests masked. Nothing is sent to D2L in preview. Click **✎ Instructor** to go back.
+Click **Student preview** (the eye) in the toolbar. You see exactly what students get: starter files, read-only locks, the instructions, and test results with hidden tests masked. Nothing is sent to D2L in preview. Click **Instructor** (the pencil) to go back.
 
 ## 5. Publish to D2L
 1. Open the **📦 Publish** tab and resolve anything flagged on the checklist.
 2. Click **📦 Export for D2L (.zip)**.
 3. In D2L **Content**, add the .zip as a SCORM package, turn on grade reporting, and link it to a grade item. Scores are reported out of 100.
-4. Check the activity with D2L's **View as Student**.
+4. Check the activity with a test student account. D2L's **View as Student** runs the activity but does not save grades.
 
 **What students get:**
 
@@ -66,6 +68,7 @@ Click **👁 Student Preview** in the toolbar. You see exactly what students get
 **What students can do:**
 
 * Run code with interactive `input()`.
+* Use the **terminal** like a small Linux command line: `ls -l`, `cd`, `pwd`, `cat`, `grep`, `head`, `tail`, `wc`, `find`, `tree`, `which`, `mkdir`, `touch`, `cp`, `mv`, `rm`, `chmod`, pipes (`|`) and redirects (`>`), plus `python file.py`. Type `help` for the list. Read-only (R) files can't be changed, assignment files can't be deleted, and hidden (H) files don't exist for students. Files their programs create appear in the file tree (if you allow new files in Settings).
 * Run the tests as many times as they like. Each run sends the score to D2L, and by default the best score counts.
 * Reset a file to its starter code.
 * Download their work.
@@ -73,8 +76,8 @@ Click **👁 Student Preview** in the toolbar. You see exactly what students get
 
 ## 6. Save your work
 * Your work **autosaves in this browser** as you go.
-* **💾 Save Project** downloads a .zip of the full project, including solutions. Keep it for next semester.
-* **📂 Open** loads a saved project, or an exported D2L package. Packages contain no solutions.
+* **Project → Save Project** downloads a .zip of the full project, including solutions. Keep it for next semester.
+* **Project → Open…** loads a saved project, or an exported D2L package. Packages contain no solutions.
 * To make a project the template's default, replace the `assignment` folder with the one inside the project .zip.
 
 ## About test security

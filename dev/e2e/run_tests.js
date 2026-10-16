@@ -109,12 +109,13 @@ function check(name, cond, extra='') { results.push(`${cond ? 'PASS' : 'FAIL'}  
   check('Generated manifest lists assignment.dat', mani.includes('assignment.dat') && mani.includes('Sample Lab'));
 
   // Save Project -> Open round trip
-  const [pdl] = await Promise.all([page.waitForEvent('download'), page.click('#instructor-actions button:has-text("Save Project")')]);
+  const [pdl] = await Promise.all([page.waitForEvent('download'), page.click('#instructor-actions .menu-trigger').then(() => page.click('#instructor-actions .menu-item:has-text("Save Project")'))]);
   const projZip = T + '/project.zip'; await pdl.saveAs(projZip);
   const projList = execSync(`unzip -l ${projZip}`).toString();
   check('Project zip has solution + json', projList.includes('assignment/solution/main.py') && projList.includes('assignment/assignment.json') && projList.includes('assignment/files/tests/hidden_readings.csv'));
   page.once('dialog', d => d.accept());
-  await page.click('#instructor-actions button:has-text("New")');
+  await page.click('#instructor-actions .menu-trigger');
+  await page.click('#instructor-actions .menu-item:has-text("New assignment")');
   check('New assignment resets', await page.evaluate(() => App.project.tests.length === 0 && App.project.title === 'Untitled Assignment'));
   await page.setInputFiles('#instructor-actions input[type=file]', projZip);
   await page.waitForFunction(() => App.project.title.startsWith('Sample Lab'), null, { timeout: 10000 });
@@ -136,7 +137,15 @@ function check(name, cond, extra='') { results.push(`${cond ? 'PASS' : 'FAIL'}  
   check('Connected badge', (await frame.locator('#lms-badge').innerText()).includes('Connected to D2L'));
   check('SCORM initialized + incomplete', await sp.evaluate(() => scormLog[0][0] === 'init' && scormStore['cmi.core.lesson_status'] === 'incomplete'));
   check('Hidden file not in tree', await frame.locator('.file-item[data-path="tests/hidden_readings.csv"]').count() === 0);
-  check('Readonly file shows lock', (await frame.locator('.file-item[data-path="data/readings.csv"]').innerText()).includes('🔒'));
+  check('Readonly file shows lock', await frame.locator('.file-item[data-path="data/readings.csv"] .lock-icon').count() === 1);
+  // Terminal shell: hidden files are absent, read-only files are protected
+  await frame.evaluate(() => term._type('ls; ls tests; echo x > data/readings.csv; rm main.py\r'));
+  await frame.waitForFunction(() => document.getElementById('xterm-out').textContent.includes("rm: cannot remove 'main.py'"), null, { timeout: 15000 })
+    .then(() => true).catch(() => false);
+  const shellOut = await frame.evaluate(() => document.getElementById('xterm-out').textContent);
+  check('Shell hides hidden files', shellOut.includes("ls: cannot access 'tests'"));
+  check('Shell protects read-only files', shellOut.includes('data/readings.csv: Permission denied'));
+  check('Shell keeps assignment files', shellOut.includes("rm: cannot remove 'main.py'"));
   check('Instructions rendered', (await frame.locator('#instructions-content h1').innerText()).includes('Temperature'));
   check('Student cannot shadow hidden file', await frame.evaluate(() => { window.prompt = () => 'tests/hidden_readings.csv'; let msg=''; window.alert = (m) => msg = m; createNewFile(); return msg.includes('exists'); }));
 

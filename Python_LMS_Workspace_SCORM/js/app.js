@@ -20,14 +20,188 @@ const BINARY_EXT = /\.(png|jpe?g|gif|bmp|webp|ico|pdf|zip|xlsx?|docx?|pptx?|sqli
 const PKG_HEADER = 'PYWS1';
 const PKG_KEY = 'python-lab-workspace';
 
+
+// ---------------------------------------------------------------------------
+// UI kit: icons, buttons, dropdown menus, theme
+// ---------------------------------------------------------------------------
+const ICON_PATHS = {
+    sidebar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+    play: '<path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    tests: '<path d="M4 7l2 2 3.5-3.5M4 15l2 2 3.5-3.5M13 8h7M13 16h7"/>',
+    loader: '<path d="M12 3a9 9 0 1 0 9 9"/>',
+    filePlus: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9 14h6"/>',
+    folderPlus: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 10v6M9 13h6"/>',
+    download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+    upload: '<path d="M12 20V9M7 14l5-5 5 5M5 4h14"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    chevronDown: '<path d="M6 9l6 6 6-6"/>',
+    chevronLeft: '<path d="M15 6l-6 6 6 6"/>',
+    chevronRight: '<path d="M9 6l6 6-6 6"/>',
+    exit: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/>',
+    external: '<path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+    eraser: '<path d="M5 19h14M8.5 15.5l-3-3a1.5 1.5 0 0 1 0-2.1l6.4-6.4a1.5 1.5 0 0 1 2.1 0l4 4a1.5 1.5 0 0 1 0 2.1L13 15.5z"/>',
+    reset: '<path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1.6-7.4L4 10"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    newDoc: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>',
+    open: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1H8.5a2 2 0 0 0-1.9 1.4L4 19H5"/><path d="M4 19l2.6-7.6A2 2 0 0 1 8.5 10H21l-2.7 7.7A2 2 0 0 1 16.4 19z"/>',
+    save: '<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8V3M7 21v-7h10v7"/>',
+    box: '<path d="M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8M12 13v8"/>',
+    pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+};
+
+function icon(name, cls = '') {
+    return `<svg class="icon ${cls}" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name] || ''}</svg>`;
+}
+
+/** Set a button to icon + label (+ optional keyboard hint). */
+function setBtn(btn, iconName, label, kbd) {
+    btn.innerHTML = (iconName ? icon(iconName) : '') + (label ? '<span class="label"></span>' : '') + (kbd ? `<kbd>${kbd}</kbd>` : '');
+    if (label) btn.querySelector('.label').textContent = label;
+}
+
+function hydrateIcons(root = document) {
+    root.querySelectorAll('[data-icon]').forEach(el => {
+        const label = el.dataset.label;
+        if (el.tagName === 'BUTTON') setBtn(el, el.dataset.icon, label, el.dataset.kbd);
+        else el.innerHTML = icon(el.dataset.icon);
+    });
+}
+
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const RUN_KBD = IS_MAC ? '⌘↵' : 'Ctrl↵';
+
+/**
+ * Dropdown menu. items() returns [{label, icon, onClick, checked, kbd, title} | '-'].
+ * Arrow keys move, Escape closes, clicking outside closes.
+ */
+function menuButton({ label, iconName, title, className = 'tool-btn', items, align = 'end' }) {
+    const wrap = document.createElement('div');
+    wrap.className = 'menu-wrap';
+    const btn = document.createElement('button');
+    btn.className = className + ' menu-trigger';
+    btn.title = title || label || '';
+    if (!label) btn.setAttribute('aria-label', title || '');
+    btn.setAttribute('aria-haspopup', 'menu');
+    btn.setAttribute('aria-expanded', 'false');
+    const menu = document.createElement('div');
+    menu.className = 'menu' + (align === 'start' ? ' align-start' : '');
+    menu.setAttribute('role', 'menu');
+    wrap.append(btn, menu);
+    const render = () => {
+        setBtn(btn, typeof iconName === 'function' ? iconName() : iconName, label);
+        if (label) btn.insertAdjacentHTML('beforeend', icon('chevronDown', 'chev'));
+    };
+    const outside = (e) => { if (!wrap.contains(e.target)) close(); };
+    function close() {
+        wrap.classList.remove('open');
+        btn.setAttribute('aria-expanded', 'false');
+        document.removeEventListener('pointerdown', outside, true);
+    }
+    function open(focusFirst) {
+        menu.innerHTML = '';
+        for (const it of items()) {
+            if (it === '-') { menu.appendChild(Object.assign(document.createElement('div'), { className: 'menu-sep' })); continue; }
+            const b = document.createElement('button');
+            b.className = 'menu-item';
+            b.setAttribute('role', it.checked !== undefined ? 'menuitemradio' : 'menuitem');
+            if (it.checked !== undefined) b.setAttribute('aria-checked', String(!!it.checked));
+            b.innerHTML = `<span class="mi-icon">${it.icon ? icon(it.icon) : ''}</span><span class="mi-label"></span>`
+                + (it.kbd ? `<kbd>${it.kbd}</kbd>` : '') + (it.checked ? `<span class="mi-check">${icon('check')}</span>` : '');
+            b.querySelector('.mi-label').textContent = it.label;
+            if (it.title) b.title = it.title;
+            b.addEventListener('click', () => { close(); btn.focus(); it.onClick(); });
+            menu.appendChild(b);
+        }
+        wrap.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        document.addEventListener('pointerdown', outside, true);
+        if (focusFirst) menu.querySelector('.menu-item')?.focus();
+    }
+    btn.addEventListener('click', () => wrap.classList.contains('open') ? close() : open(false));
+    btn.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') { e.preventDefault(); open(true); } });
+    menu.addEventListener('keydown', (e) => {
+        const list = [...menu.querySelectorAll('.menu-item')];
+        const i = list.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
+        else if (e.key === 'Tab') close();
+    });
+    render();
+    wrap.refresh = render;
+    return wrap;
+}
+
+// Theme: 'system' follows the device setting; 'light' / 'dark' override it.
+// index.html sets data-theme before first paint, so there is no flash.
+const THEME_KEY = 'pyws:theme';
+const darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+let themeMenu = null;
+
+function themePref() {
+    try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; }
+}
+function effectiveTheme() {
+    const pref = themePref();
+    return pref === 'system' ? (darkQuery && darkQuery.matches ? 'dark' : 'light') : pref;
+}
+function terminalTheme() {
+    return effectiveTheme() === 'light' ? {
+        background: '#ffffff', foreground: '#27272a', cursor: '#27272a', cursorAccent: '#ffffff', selectionBackground: '#bfdbfe',
+        black: '#27272a', red: '#c4262e', green: '#13803a', yellow: '#8a6100', blue: '#1d4ed8', magenta: '#a21caf', cyan: '#0e7490', white: '#71717a',
+        brightBlack: '#52525b', brightRed: '#b91c1c', brightGreen: '#15803d', brightYellow: '#854d0e', brightBlue: '#1d4ed8', brightMagenta: '#a21caf', brightCyan: '#0e7490', brightWhite: '#3f3f46'
+    } : {
+        background: '#151517', foreground: '#d4d4d8', cursor: '#d4d4d8', cursorAccent: '#151517', selectionBackground: '#3f3f46',
+        black: '#27272a', red: '#f87171', green: '#4ade80', yellow: '#facc15', blue: '#60a5fa', magenta: '#e879f9', cyan: '#22d3ee', white: '#d4d4d8',
+        brightBlack: '#71717a', brightRed: '#fca5a5', brightGreen: '#86efac', brightYellow: '#fde047', brightBlue: '#93c5fd', brightMagenta: '#f0abfc', brightCyan: '#67e8f9', brightWhite: '#fafafa'
+    };
+}
+function applyTheme() {
+    document.documentElement.dataset.theme = effectiveTheme();
+    try { term.options.theme = terminalTheme(); } catch (e) { /* terminal not ready */ }
+    if (themeMenu) themeMenu.refresh();
+}
+function setThemePref(pref) {
+    try { localStorage.setItem(THEME_KEY, pref); } catch (e) {}
+    document.documentElement.classList.add('theme-switching');
+    applyTheme();
+    setTimeout(() => document.documentElement.classList.remove('theme-switching'), 250);
+}
+if (darkQuery) darkQuery.addEventListener('change', () => { if (themePref() === 'system') setThemePref('system'); });
+
+function initChrome() {
+    hydrateIcons();
+    themeMenu = menuButton({
+        title: 'Theme', className: 'icon-btn', iconName: () => ({ system: 'monitor', light: 'sun', dark: 'moon' })[themePref()],
+        items: () => [
+            { label: 'System', icon: 'monitor', checked: themePref() === 'system', onClick: () => setThemePref('system') },
+            { label: 'Light', icon: 'sun', checked: themePref() === 'light', onClick: () => setThemePref('light') },
+            { label: 'Dark', icon: 'moon', checked: themePref() === 'dark', onClick: () => setThemePref('dark') }
+        ]
+    });
+    themeMenu.id = 'theme-menu';
+    document.getElementById('exit-btn').before(themeMenu);
+    setButtonState(false);
+    setBtn(document.getElementById('test-btn'), 'tests', 'Run Tests');
+}
+
 // ---------------------------------------------------------------------------
 // Terminal
 // ---------------------------------------------------------------------------
 const term = new Terminal({
     cursorBlink: true,
-    theme: { background: '#181818', foreground: '#f0f0f0' },
-    fontFamily: 'Consolas, "Courier New", monospace',
+    theme: terminalTheme(),
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
     fontSize: 13,
+    lineHeight: 1.2,
     convertEol: true
 });
 const fitAddon = new FitAddon.FitAddon();
@@ -64,6 +238,7 @@ let saveTimer = null;
 // Boot
 // ---------------------------------------------------------------------------
 document.addEventListener("DOMContentLoaded", async () => {
+    initChrome();
     initCodeMirrorEditor();
     initSplitters();
     initTerminalResize();
@@ -580,13 +755,14 @@ function renderInstructions() {
 }
 
 window.openInstructionsNewTab = function () {
+    const dark = effectiveTheme() === 'dark';
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>${(project.title || 'Assignment').replace(/</g, '&lt;')} — Instructions</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-dark.min.css">
-    <style>body { background:#1e1e1e; color:#f0f0f0; padding:40px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; } .markdown-body { max-width:800px; margin:0 auto; }</style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown-${dark ? 'dark' : 'light'}.min.css">
+    <style>body { background:${dark ? '#0d1117' : '#ffffff'}; padding:40px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; } .markdown-body { max-width:800px; margin:0 auto; }</style>
     <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"><\/script>
 </head>
 <body class="markdown-body">
@@ -603,6 +779,7 @@ window.toggleInstructionsPane = function () {
     const pane = document.getElementById('instructions-pane');
     pane.classList.add('animating');
     document.body.classList.toggle('instructions-collapsed');
+    window.dispatchEvent(new Event('resize'));
     setTimeout(() => {
         pane.classList.remove('animating');
         fitAddon.fit();
@@ -661,8 +838,11 @@ function renderTreeNode(node, parentElement, currentPath) {
 
         const rowContent = document.createElement('div');
         rowContent.className = 'file-row-content';
-        const icon = isFolder ? '📁' : (isProtected(fullPath) ? '🔒' : '📄');
-        rowContent.innerText = `${icon} ${name}`;
+        rowContent.innerHTML = icon(isFolder ? 'folder' : 'file', isFolder ? 'ft-folder' : (name.endsWith('.py') ? 'ft-py' : 'ft-file')) + '<span class="file-name"></span>';
+        rowContent.querySelector('.file-name').textContent = name;
+        if (!isFolder && isProtected(fullPath)) {
+            rowContent.insertAdjacentHTML('beforeend', `<span class="lock-icon" title="Read-only" aria-label="read-only">${icon('lock')}</span>`);
+        }
         li.appendChild(rowContent);
 
         li.onclick = (e) => {
@@ -687,15 +867,15 @@ function renderTreeNode(node, parentElement, currentPath) {
             const resetBtn = document.createElement('button');
             resetBtn.className = 'file-delete';
             resetBtn.title = 'Reset this file to the starter code';
-            resetBtn.innerText = '↺';
+            resetBtn.innerHTML = icon('reset');
             resetBtn.onclick = (e) => { e.stopPropagation(); resetFileToStarter(fullPath); };
             actions.appendChild(resetBtn);
         }
         if (canDelete(fullPath, isFolder)) {
             const delBtn = document.createElement('button');
-            delBtn.className = 'file-delete';
+            delBtn.className = 'file-delete danger';
             delBtn.title = 'Delete';
-            delBtn.innerText = '✕';
+            delBtn.innerHTML = icon('close');
             delBtn.onclick = (e) => { e.stopPropagation(); deleteItem(fullPath, isFolder); };
             actions.appendChild(delBtn);
         }
@@ -939,11 +1119,17 @@ function initBottomTabs() {
     document.querySelectorAll('.bottom-tab').forEach(btn => {
         btn.addEventListener('click', () => showBottomTab(btn.dataset.tab));
     });
+    document.getElementById('clear-terminal-btn').addEventListener('click', () => {
+        term.clear();
+        if (shell.active) redrawShellLine();
+        term.focus();
+    });
 }
 function showBottomTab(tab) {
     document.querySelectorAll('.bottom-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     document.getElementById('terminal-host').hidden = tab !== 'terminal';
     document.getElementById('results-panel').hidden = tab !== 'results';
+    document.getElementById('clear-terminal-btn').hidden = tab !== 'terminal';
     if (tab === 'terminal') setTimeout(() => fitAddon.fit(), 0);
 }
 
@@ -965,8 +1151,8 @@ function showBanner(text, kind = 'info', actions = []) {
         el.appendChild(b);
     }
     const close = document.createElement('button');
-    close.className = 'banner-close';
-    close.innerText = '✕';
+    close.className = 'banner-close icon-btn';
+    close.innerHTML = icon('close');
     close.title = 'Dismiss';
     close.onclick = hideBanner;
     el.appendChild(close);
@@ -1075,6 +1261,263 @@ function initBeforeUnload() {
 }
 
 // ---------------------------------------------------------------------------
+// Terminal shell
+// A Linux-style prompt. Commands run in the worker (harness.py _ws_shell) on
+// the real Pyodide file system; this side handles line editing, history and
+// Tab completion, then folds any file changes back into the file tree.
+// ---------------------------------------------------------------------------
+const shell = {
+    cwd: '', line: '', pos: 0, active: false, busy: false,
+    history: [], hIndex: 0, commands: [], lastTab: 0,
+    pending: ''   // keys typed while a command was running; replayed at the next prompt
+};
+
+function promptText() {
+    return `\x1b[1;32mstudent@pylab\x1b[0m:\x1b[1;34m~${shell.cwd ? '/' + shell.cwd : ''}\x1b[0m$ `;
+}
+
+function showPrompt() {
+    if (!workerReady || runSession || shell.active || shell.busy) return;
+    const x = term.buffer && term.buffer.active ? term.buffer.active.cursorX : 0;
+    if (x) term.write('\r\n');
+    shell.line = '';
+    shell.pos = 0;
+    shell.hIndex = shell.history.length;
+    shell.active = true;
+    term.write(promptText());
+    if (shell.pending) {
+        const keys = shell.pending;
+        shell.pending = '';
+        shellInput(keys);
+    }
+}
+
+function redrawShellLine() {
+    term.write('\r\x1b[K' + promptText() + shell.line);
+    const back = shell.line.length - shell.pos;
+    if (back > 0) term.write(`\x1b[${back}D`);
+}
+
+function setShellLine(text) {
+    shell.line = text;
+    shell.pos = text.length;
+    redrawShellLine();
+}
+
+function shellInput(data) {
+    if (!shell.active || shell.busy) {
+        if (shell.busy && shell.pending.length < 4096 && data !== '\x03') shell.pending += data;
+        return;
+    }
+    const keys = {
+        '\x1b[A': () => { if (shell.hIndex > 0) setShellLine(shell.history[--shell.hIndex]); },
+        '\x1b[B': () => {
+            if (shell.hIndex < shell.history.length) shell.hIndex++;
+            setShellLine(shell.history[shell.hIndex] ?? '');
+        },
+        '\x1b[C': () => { if (shell.pos < shell.line.length) { shell.pos++; term.write('\x1b[C'); } },
+        '\x1b[D': () => { if (shell.pos > 0) { shell.pos--; term.write('\x1b[D'); } },
+        '\x1b[H': () => { shell.pos = 0; redrawShellLine(); },
+        '\x1b[F': () => { shell.pos = shell.line.length; redrawShellLine(); },
+        '\x1b[3~': () => {
+            if (shell.pos < shell.line.length) {
+                shell.line = shell.line.slice(0, shell.pos) + shell.line.slice(shell.pos + 1);
+                redrawShellLine();
+            }
+        }
+    };
+    keys['\x1bOH'] = keys['\x1b[H'];
+    keys['\x1bOF'] = keys['\x1b[F'];
+    if (data.startsWith('\x1b')) { (keys[data] || (() => {}))(); return; }
+    for (let i = 0; i < data.length; i++) {
+        const ch = data[i];
+        if (!shell.active || shell.busy) { shell.pending += data.slice(i); return; }
+        if (ch === '\r' || ch === '\n') submitShellLine();
+        else if (ch === '\x7f' || ch === '\b') {
+            if (shell.pos > 0) {
+                shell.line = shell.line.slice(0, shell.pos - 1) + shell.line.slice(shell.pos);
+                shell.pos--;
+                if (shell.pos === shell.line.length) term.write('\b \b'); else redrawShellLine();
+            }
+        } else if (ch === '\x03') {           // Ctrl+C: cancel the line
+            term.write('^C\r\n');
+            shell.active = false;
+            showPrompt();
+        } else if (ch === '\x0c') {           // Ctrl+L: clear screen
+            term.clear();
+            redrawShellLine();
+        } else if (ch === '\x01') { shell.pos = 0; redrawShellLine(); }               // Ctrl+A
+        else if (ch === '\x05') { shell.pos = shell.line.length; redrawShellLine(); } // Ctrl+E
+        else if (ch === '\x15') { setShellLine(''); }                                  // Ctrl+U
+        else if (ch === '\t') tabComplete();
+        else if (ch >= ' ') {
+            shell.line = shell.line.slice(0, shell.pos) + ch + shell.line.slice(shell.pos);
+            shell.pos++;
+            if (shell.pos === shell.line.length) term.write(ch); else redrawShellLine();
+        }
+    }
+}
+
+function submitShellLine() {
+    const line = shell.line.trim();
+    term.write('\r\n');
+    shell.active = false;
+    if (!line) { showPrompt(); return; }
+    if (shell.history[shell.history.length - 1] !== line) shell.history.push(line);
+    if (shell.history.length > 200) shell.history.shift();
+    if (line === 'history') {
+        term.write(shell.history.map((h, i) => `${String(i + 1).padStart(4)}  ${h}`).join('\r\n') + '\r\n');
+        showPrompt();
+        return;
+    }
+    if (line === 'clear') { term.clear(); showPrompt(); return; }
+    if (!workerReady) { term.writeln('Python is still loading…'); return; }
+    syncWorkerFiles();
+    shell.busy = true;
+    worker.postMessage({ cmd: 'shell', line, cwd: shell.cwd });
+}
+
+function onShellResult(result, changes) {
+    shell.busy = false;
+    if (result.clear) term.clear();
+    if (result.out) term.write(result.out);
+    shell.cwd = result.cwd || '';
+    applyFsChanges(changes);
+    if (result.run) {
+        if (!(result.run in virtualFiles)) { showPrompt(); return; }
+        clearErrorHighlight();
+        startRun(result.run);
+        return;
+    }
+    showPrompt();
+}
+
+// Path helpers for completion: resolve a typed path against the shell cwd.
+function shellResolve(path) {
+    const parts = path.startsWith('~/') || path === '~' ? [] : (shell.cwd ? shell.cwd.split('/') : []);
+    for (const seg of path.replace(/^~\/?/, '').split('/')) {
+        if (!seg || seg === '.') continue;
+        if (seg === '..') parts.pop(); else parts.push(seg);
+    }
+    return parts.join('/');
+}
+
+function tabComplete() {
+    const before = shell.line.slice(0, shell.pos);
+    const start = before.lastIndexOf(' ') + 1;
+    const word = before.slice(start);
+    const isCommand = !before.slice(0, start).trim() || /[|;&]\s*$/.test(before.slice(0, start));
+    let candidates;
+    let dirPart = '';
+    if (isCommand && !word.includes('/')) {
+        candidates = shell.commands.filter(c => c.startsWith(word)).map(c => ({ name: c, suffix: ' ' }));
+    } else {
+        const slash = word.lastIndexOf('/');
+        dirPart = slash >= 0 ? word.slice(0, slash + 1) : '';
+        const base = shellResolve(dirPart || '.');
+        const prefix = word.slice(slash + 1);
+        const seen = new Set();
+        candidates = [];
+        for (const p of Object.keys(virtualFiles)) {
+            const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+            const name = p.slice(parent ? parent.length + 1 : 0);
+            if (parent !== base || !name.startsWith(prefix) || seen.has(name)) continue;
+            seen.add(name);
+            candidates.push({ name, suffix: virtualFiles[p] === null ? '/' : ' ' });
+        }
+    }
+    if (!candidates.length) return;
+    const typed = word.slice(dirPart.length);
+    let completion;
+    if (candidates.length === 1) completion = candidates[0].name + candidates[0].suffix;
+    else {
+        completion = candidates.reduce((acc, c) => { let i = 0; while (i < acc.length && acc[i] === c.name[i]) i++; return acc.slice(0, i); }, candidates[0].name);
+    }
+    const insert = completion.slice(typed.length);
+    if (insert) {
+        shell.line = shell.line.slice(0, shell.pos) + insert + shell.line.slice(shell.pos);
+        shell.pos += insert.length;
+        redrawShellLine();
+        return;
+    }
+    // Nothing more to add: list the options (on a second Tab, like bash).
+    const now = Date.now();
+    if (now - shell.lastTab < 800) {
+        term.write('\r\n' + candidates.map(c => c.name + (c.suffix === '/' ? '/' : '')).sort().join('  ') + '\r\n');
+        redrawShellLine();
+    }
+    shell.lastTab = now;
+}
+
+/**
+ * Fold file-system changes reported by the worker (from the shell or from a
+ * program run) into the working tree. The usual rules apply: protected files
+ * stay as they are, and new files need allowNewFiles. Anything not accepted is
+ * reverted by re-syncing the worker.
+ */
+function applyFsChanges(ch) {
+    if (!ch) return;
+    let rejected = false, changed = false, refreshActive = false;
+    const canCreate = (p) => mode === 'instructor' || (project.allowNewFiles && !isReservedPath(p));
+    const removed = (ch.removed || []).slice().sort((a, b) => b.split('/').length - a.split('/').length);
+    for (const p of removed) {
+        if (virtualFiles[p] === undefined) continue;
+        const isFolder = virtualFiles[p] === null;
+        if (!canDelete(p, isFolder)) { rejected = true; continue; }
+        for (const k of Object.keys(virtualFiles)) {
+            if (k === p || k.startsWith(p + '/')) { delete virtualFiles[k]; binaryFiles.delete(k); }
+        }
+        if (mode === 'instructor' && window.Instructor) window.Instructor.onPathDeleted(p);
+        if (activeFile === p || (activeFile && activeFile.startsWith(p + '/'))) refreshActive = true;
+        changed = true;
+    }
+    for (const d of ch.dirs || []) {
+        if (virtualFiles[d] !== undefined) continue;
+        if (!canCreate(d)) { rejected = true; continue; }
+        virtualFiles[d] = null;
+        ensureParentFolders(d);
+        changed = true;
+    }
+    for (const [p, v] of Object.entries(ch.written || {})) {
+        const binary = v.b64 != null;
+        const content = binary ? v.b64 : v.text;
+        if (virtualFiles[p] === null) continue;
+        const exists = virtualFiles[p] !== undefined;
+        if (exists ? isProtected(p) : !canCreate(p)) { rejected = true; continue; }
+        if (exists && virtualFiles[p] === content) continue;
+        virtualFiles[p] = content;
+        if (binary) binaryFiles.add(p); else binaryFiles.delete(p);
+        ensureParentFolders(p);
+        if (mode === 'instructor' && window.Instructor) {
+            if (!exists) window.Instructor.onFileCreated(p);
+            window.Instructor.onFileEdited(p, content, solutionView);
+            if (project.files[p]) project.files[p].binary = binary;
+        }
+        if (p === activeFile) refreshActive = true;
+        changed = true;
+    }
+    if (ch.skipped && ch.skipped.length) {
+        term.write(`\x1b[33mNot added to your files (larger than 2 MB): ${ch.skipped.join(', ')}\x1b[0m\r\n`);
+    }
+    if (changed) {
+        isDirty = true;
+        scheduleStudentSave();
+        if (refreshActive) {
+            const keep = activeFile && virtualFiles[activeFile] != null ? activeFile : null;
+            const cursor = keep && cmEditor ? cmEditor.getCursor() : null;
+            setEditorContent(keep || Object.keys(virtualFiles).filter(k => virtualFiles[k] !== null).sort()[0] || null);
+            if (cursor) cmEditor.setCursor(cursor);
+        } else {
+            initFileExplorer();
+        }
+    }
+    if (rejected) {
+        term.write('\x1b[33mSome file changes are not allowed in this assignment and were undone.\x1b[0m\r\n');
+        syncWorkerFiles();
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Run Code (interactive, replay-based input)
 // ---------------------------------------------------------------------------
 function spawnWorker() {
@@ -1084,8 +1527,12 @@ function spawnWorker() {
         const msg = e.data;
         if (msg.type === 'ready') {
             workerReady = true;
-            term.writeln('\x1b[32m[Python ready]\x1b[0m Click ▶ Run Code (Ctrl+Enter) to run the open file.\r\n');
+            if (msg.commands) shell.commands = msg.commands;
+            term.writeln('\x1b[32m[Python ready]\x1b[0m Run the open file with ▶ Run (Ctrl+Enter), or type \x1b[1mhelp\x1b[0m for terminal commands.');
             syncWorkerFiles();
+            showPrompt();
+        } else if (msg.type === 'shellResult') {
+            onShellResult(msg.result, msg.changes);
         } else if (msg.type === 'fatal') {
             term.writeln(`\x1b[31m${msg.data}\x1b[0m`);
             term.writeln('\x1b[31mCheck your internet connection and reload the page.\x1b[0m');
@@ -1099,6 +1546,8 @@ function spawnWorker() {
         } else if (msg.type === 'done') {
             runSession = null;
             setButtonState(false);
+            applyFsChanges(msg.changes);
+            showPrompt();
         }
     };
 }
@@ -1123,7 +1572,8 @@ function beginInputWait() {
 
 function initTerminalInput() {
     term.onData((data) => {
-        if (!runSession || !runSession.awaiting) return;
+        if (!runSession) { shellInput(data); return; }
+        if (!runSession.awaiting) return;
         for (const ch of data) {
             if (ch === '\r' || ch === '\n') {
                 term.write('\r\n');
@@ -1132,6 +1582,7 @@ function initTerminalInput() {
                 runSession.shown += line.length + 1;
                 runSession.awaiting = false;
                 document.getElementById('terminal-container').classList.remove('awaiting-input');
+                syncWorkerFiles(); // each replay starts from the same files
                 sendRun();
                 return;
             } else if (ch === '\x7f' || ch === '\b') {
@@ -1188,7 +1639,8 @@ function runtimeFileSet() {
 function syncWorkerFiles() {
     if (worker && workerReady) {
         const { files, binary, readonly } = runtimeFileSet();
-        worker.postMessage({ cmd: 'sync', files, binary, readonly });
+        const keep = mode === 'instructor' ? [] : Object.keys(project.files).filter(p => p in virtualFiles);
+        worker.postMessage({ cmd: 'sync', files, binary, readonly, keep });
     }
 }
 
@@ -1202,7 +1654,7 @@ function stopRun() {
     worker.terminate();
     runSession = null;
     document.getElementById('terminal-container').classList.remove('awaiting-input');
-    term.writeln('\r\n\x1b[31m[Process stopped]\x1b[0m\r\n');
+    term.writeln('\r\n\x1b[31m[Process stopped]\x1b[0m');
     setButtonState(false);
     spawnWorker();
 }
@@ -1210,6 +1662,7 @@ function stopRun() {
 window.toggleExecution = function () {
     if (isRunning) { stopRun(); return; }
     if (!workerReady) { toast('Python is still loading — try again in a moment.'); return; }
+    if (shell.busy) return;
     showBottomTab('terminal');
     clearErrorHighlight();
     syncWorkerFiles();
@@ -1219,18 +1672,28 @@ window.toggleExecution = function () {
         else if (virtualFiles["main.py"] != null) targetFile = "main.py";
         else { term.writeln('\x1b[31mSelect a .py file to run\x1b[0m\r\n'); return; }
     }
+    if (shell.active) {
+        // Show the run as if it had been typed at the prompt.
+        term.write('\r\x1b[K' + promptText() + `python3 ${targetFile}\r\n`);
+        shell.active = false;
+    } else {
+        term.writeln(`\x1b[36m$ python3 ${targetFile}\x1b[0m`);
+    }
+    startRun(targetFile);
+};
+
+function startRun(targetFile) {
     lastRunTargetFile = targetFile;
     runSession = { target: targetFile, inputs: [], shown: 0, received: 0, seed: Math.floor(Math.random() * 1e9), awaiting: false, line: '' };
     setButtonState(true);
-    term.writeln(`\x1b[36m$ python3 ${targetFile}\x1b[0m`);
     sendRun();
-};
+}
 
 function setButtonState(running) {
     isRunning = running;
     const btn = document.getElementById('action-btn');
     btn.className = running ? 'stop-btn' : 'run-btn';
-    btn.innerText = running ? '⏹ Stop' : '▶ Run Code';
+    setBtn(btn, running ? 'stop' : 'play', running ? 'Stop' : 'Run', running ? null : RUN_KBD);
 }
 
 // ---------------------------------------------------------------------------
@@ -1413,7 +1876,8 @@ window.runTests = async function () {
     isTesting = true;
     const btn = document.getElementById('test-btn');
     btn.disabled = true;
-    btn.innerText = '⏳ Testing…';
+    setBtn(btn, 'loader', 'Testing…');
+    btn.classList.add('busy');
     showBottomTab('results');
     const panel = document.getElementById('results-panel');
     panel.innerHTML = '<div class="results-status">Starting test runner…</div>';
@@ -1441,7 +1905,8 @@ window.runTests = async function () {
     } finally {
         isTesting = false;
         btn.disabled = false;
-        btn.innerText = '✓ Run Tests';
+        setBtn(btn, 'tests', 'Run Tests');
+        btn.classList.remove('busy');
     }
 };
 
@@ -1522,7 +1987,7 @@ const App = {
     syncWorkerFiles, runTestSuite, evaluateTest, summarize, renderResults, showBottomTab,
     normalizeProject, encodePackage, decodePackage, fetchText, fetchBase64,
     bytesToB64, b64ToBytes, triggerDownload, showBanner, hideBanner, toast, uid,
-    ensureParentFolders, updateConnectionBadge,
+    ensureParentFolders, updateConnectionBadge, icon, setBtn, menuButton,
     refreshEditor() { if (cmEditor) cmEditor.refresh(); fitAddon.fit(); }
 };
 window.App = App;

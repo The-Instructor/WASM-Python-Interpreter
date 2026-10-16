@@ -122,7 +122,7 @@
             if (!draft.project || JSON.stringify(App.normalizeProject(draft.project)) === folderProjectJSON) return;
             App.project = draft.project;
             const when = new Date(draft.savedAt).toLocaleString();
-            App.showBanner(`Restored your unsaved work from ${when}. Use 💾 Save Project to keep a copy.`, 'info', [
+            App.showBanner(`Restored your unsaved work from ${when}. Use Project → Save Project to keep a copy.`, 'info', [
                 { label: 'Discard draft', onClick: discardDraft }
             ]);
         } catch (e) { /* ignore */ }
@@ -145,7 +145,7 @@
             ind.classList.add('show');
             setTimeout(() => ind.classList.remove('show'), 1200);
         } catch (e) {
-            if (!draftWarned) { draftWarned = true; App.toast('Too large to autosave in the browser — use 💾 Save Project.', 'warn'); }
+            if (!draftWarned) { draftWarned = true; App.toast('Too large to autosave in the browser — use Project → Save Project.', 'warn'); }
         }
     }
 
@@ -163,27 +163,35 @@
     function buildToolbar() {
         const sw = document.getElementById('mode-switch');
         sw.innerHTML = '';
-        sw.append(
-            h('button', { 'data-mode': 'instructor', title: 'Build and test the assignment', onclick: () => App.setMode('instructor'), text: '✎ Instructor' }),
-            h('button', { 'data-mode': 'preview', title: 'See exactly what students will see', onclick: () => App.setMode('preview'), text: '👁 Student Preview' })
-        );
+        const instructorBtn = h('button', { 'data-mode': 'instructor', title: 'Build and test the assignment', onclick: () => App.setMode('instructor') });
+        const previewBtn = h('button', { 'data-mode': 'preview', title: 'See exactly what students will see', onclick: () => App.setMode('preview') });
+        App.setBtn(instructorBtn, 'pencil', 'Instructor');
+        App.setBtn(previewBtn, 'eye', 'Student preview');
+        sw.append(instructorBtn, previewBtn);
         const actions = document.getElementById('instructor-actions');
         actions.innerHTML = '';
         const openInput = h('input', { type: 'file', accept: '.zip', hidden: true, onchange: (e) => { if (e.target.files[0]) openProjectFile(e.target.files[0]); e.target.value = ''; } });
-        actions.append(
-            h('button', { class: 'tool-btn', title: 'Start a new, empty assignment', onclick: newAssignment, text: '✚ New' }),
-            h('button', { class: 'tool-btn', title: 'Open a saved project (.zip) or an exported D2L package', onclick: () => openInput.click(), text: '📂 Open' }),
-            h('button', { class: 'tool-btn', title: 'Download the full project, including solutions', onclick: saveProject, text: '💾 Save Project' }),
-            h('button', { class: 'export-btn', title: 'Build the student package to upload to D2L', onclick: () => { activeTab = 'publish'; renderPanel(); }, text: '📦 Publish' }),
-            openInput
-        );
+        const projectMenu = App.menuButton({
+            label: 'Project', iconName: 'folder', title: 'New, open or save a project',
+            items: () => [
+                { label: 'New assignment', icon: 'newDoc', title: 'Start a new, empty assignment', onClick: newAssignment },
+                { label: 'Open…', icon: 'open', title: 'Open a saved project (.zip) or an exported D2L package', onClick: () => openInput.click() },
+                '-',
+                { label: 'Save Project (.zip)', icon: 'save', title: 'Download the full project, including solutions', onClick: saveProject }
+            ]
+        });
+        const publishBtn = h('button', { class: 'export-btn', title: 'Build the student package to upload to D2L', onclick: () => { activeTab = 'publish'; if (App.mode !== 'instructor') App.setMode('instructor'); else renderPanel(); } });
+        App.setBtn(publishBtn, 'box', 'Publish');
+        actions.append(projectMenu, publishBtn, openInput);
     }
 
     function buildSidebarExtra() {
         const box = document.getElementById('sidebar-extra');
         const input = h('input', { type: 'file', multiple: true, hidden: true, onchange: (e) => { addUploadedFiles(e.target.files); e.target.value = ''; } });
+        const uploadBtn = h('button', { class: 'upload-btn', onclick: () => input.click(), title: 'Add files (or drag & drop onto this panel)' });
+        App.setBtn(uploadBtn, 'upload', 'Upload files');
         box.append(
-            h('button', { class: 'upload-btn', onclick: () => input.click(), title: 'Add files (or drag & drop onto this panel)', text: '⬆ Upload files' }),
+            uploadBtn,
             h('div', { class: 'role-legend' },
                 h('span', { class: 'role-badge role-starter', text: 'S' }), ' starter ',
                 h('span', { class: 'role-badge role-readonly', text: 'R' }), ' read-only ',
@@ -282,16 +290,22 @@
     // ---------------------------------------------------------------- right panel
     function updateTabBadges() {
         const t = document.querySelector('.ipanel-tab[data-tab="tests"]');
-        if (t) t.innerText = `✓ Tests (${P().tests.length})`;
+        if (t) t.innerHTML = `Tests <span class="count">${P().tests.length}</span>`;
+    }
+
+    function updateTabBadgeIn(tabs) {
+        const t = tabs.querySelector('.ipanel-tab[data-tab="tests"]');
+        if (t) t.innerHTML = `Tests <span class="count">${P().tests.length}</span>`;
     }
 
     function renderPanel() {
         const panel = document.getElementById('instructor-panel');
         panel.innerHTML = '';
         const tabs = h('div', { class: 'ipanel-tabs' },
-            ...[['instructions', '📝 Instructions'], ['tests', `✓ Tests (${P().tests.length})`], ['settings', '⚙ Settings'], ['publish', '📦 Publish']]
+            ...[['instructions', 'Instructions'], ['tests', 'Tests'], ['settings', 'Settings'], ['publish', 'Publish']]
                 .map(([id, label]) => h('button', { class: 'ipanel-tab' + (activeTab === id ? ' active' : ''), 'data-tab': id, onclick: () => { activeTab = id; renderPanel(); }, text: label }))
         );
+        updateTabBadgeIn(tabs);
         panel.appendChild(tabs);
         const body = h('div', { class: 'ipanel-body' });
         panel.appendChild(body);
@@ -573,13 +587,13 @@
                 h('li', null, 'In your course, open ', h('strong', null, 'Content'), ' and choose the module for this assignment.'),
                 h('li', null, 'Use ', h('strong', null, 'Upload / Create → Add SCORM package'), ' (wording varies by D2L version) and upload the exported .zip.'),
                 h('li', null, 'Turn on grade reporting and link it to a grade item (scores are reported out of 100).'),
-                h('li', null, 'Open the activity as a student (View as Student) to check it.')),
+                h('li', null, 'Check it with a test student account. D2L\'s "View as Student" runs the activity but does not save grades.')),
             h('h3', { class: 'ipanel-h' }, 'What students get'),
             h('ul', { class: 'steps' },
                 h('li', null, 'Starter (S) and read-only (R) files, the instructions, and the tests in an encoded file.'),
                 h('li', null, 'Not included: solution versions, Instructor Mode, and plain-text tests.'),
                 h('li', null, 'Students\' work auto-saves in their browser. Hidden (H) files exist only while tests run.')),
-            h('p', { class: 'hint' }, 'Tip: use 💾 Save Project to keep an editable copy (with solutions) for next semester.')
+            h('p', { class: 'hint' }, 'Tip: use Project → Save Project to keep an editable copy (with solutions) for next semester.')
         );
     }
 

@@ -3,7 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
     <title>Python Assignment Workspace</title>
+    <script>
+        // Apply the saved theme (or the device setting) before anything paints.
+        (function () {
+            var pref = 'system';
+            try { pref = localStorage.getItem('pyws:theme') || 'system'; } catch (e) {}
+            var dark = pref === 'dark' || (pref === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        })();
+    </script>
     <!-- CodeMirror 5 CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
@@ -17,20 +27,20 @@
 <body data-mode="student">
     <header id="toolbar">
         <div class="toolbar-left">
-            <button id="toggle-sidebar-btn" class="tool-btn" onclick="toggleSidebar()" title="Toggle File Tree">📁 Files</button>
+            <button id="toggle-sidebar-btn" class="icon-btn" onclick="toggleSidebar()" title="Show or hide files" aria-label="Show or hide files" data-icon="sidebar"></button>
             <div class="brand" id="brand-title">Python Lab Workspace</div>
             <span id="lms-badge" class="lms-badge" hidden></span>
             <span id="save-indicator" class="save-indicator">Saved</span>
         </div>
         <div class="toolbar-center">
-            <button id="action-btn" class="run-btn" onclick="toggleExecution()" title="Run the open file (Ctrl+Enter)">▶ Run Code</button>
-            <button id="test-btn" class="test-btn" onclick="runTests()" title="Run the assignment's automated tests" hidden>✓ Run Tests</button>
+            <button id="action-btn" class="run-btn" onclick="toggleExecution()" title="Run the open file (Ctrl+Enter)"></button>
+            <button id="test-btn" class="test-btn" onclick="runTests()" title="Run the assignment's automated tests" hidden></button>
         </div>
         <div class="toolbar-right">
             <!-- Filled by js/instructor.js in the instructor template only -->
-            <div id="instructor-actions" class="instructor-only"></div>
             <div id="mode-switch" class="mode-switch" hidden></div>
-            <button id="exit-btn" class="exit-btn" onclick="showExitModal()" title="Exit Lab">✕ Exit Lab</button>
+            <div id="instructor-actions" class="instructor-only"></div>
+            <button id="exit-btn" class="exit-btn" onclick="showExitModal()" title="Exit lab" data-icon="exit" data-label="Exit"></button>
         </div>
     </header>
 
@@ -40,11 +50,11 @@
         <!-- LEFT: File Tree Sidebar -->
         <aside id="file-sidebar">
             <div class="sidebar-header">
-                <span>Explorer</span>
+                <span>Files</span>
                 <div class="sidebar-actions">
-                    <button id="new-file-btn" onclick="createNewFile()" title="New File">+ File</button>
-                    <button id="new-folder-btn" onclick="createNewFolder()" title="New Folder">+ Folder</button>
-                    <button id="download-btn" class="tool-btn" onclick="downloadSelected()" title="Download Selected" disabled>📥</button>
+                    <button id="new-file-btn" class="icon-btn" onclick="createNewFile()" title="New file" aria-label="New file" data-icon="filePlus"></button>
+                    <button id="new-folder-btn" class="icon-btn" onclick="createNewFolder()" title="New folder" aria-label="New folder" data-icon="folderPlus"></button>
+                    <button id="download-btn" class="icon-btn" onclick="downloadSelected()" title="Download selected (Ctrl/⌘-click to select several)" aria-label="Download selected" data-icon="download" disabled></button>
                 </div>
             </div>
             <div id="sidebar-extra" class="instructor-only"></div>
@@ -73,7 +83,8 @@
                 <div class="bottom-tabs" role="tablist">
                     <button class="bottom-tab active" data-tab="terminal" role="tab">Terminal</button>
                     <button class="bottom-tab" data-tab="results" role="tab">Test Results</button>
-                    <span class="input-hint">⌨ Type your input and press Enter</span>
+                    <span class="input-hint">Type your input and press Enter</span>
+                    <button id="clear-terminal-btn" class="icon-btn" title="Clear terminal (Ctrl+L)" aria-label="Clear terminal" data-icon="eraser"></button>
                 </div>
                 <div id="terminal-host"></div>
                 <div id="results-panel" class="results-panel" hidden></div>
@@ -85,10 +96,10 @@
         <!-- RIGHT: Assignment Instructions (students) / Instructor panel -->
         <aside id="instructions-pane">
             <div class="instructions-header student-only-flex">
-                <span>Assignment Instructions</span>
+                <span>Instructions</span>
                 <div class="instructions-actions">
-                    <button class="tool-btn" onclick="openInstructionsNewTab()" title="Open in new tab">↗ New Tab</button>
-                    <button id="toggle-instructions-btn" class="tool-btn" onclick="toggleInstructionsPane()" title="Collapse instructions" aria-label="Collapse instructions">◀</button>
+                    <button class="icon-btn" onclick="openInstructionsNewTab()" title="Open in a new tab" aria-label="Open instructions in a new tab" data-icon="external"></button>
+                    <button id="toggle-instructions-btn" class="icon-btn" onclick="toggleInstructionsPane()" title="Hide instructions" aria-label="Hide instructions" data-icon="chevronRight"></button>
                 </div>
             </div>
             <div id="instructions-content" class="markdown-body student-only">Loading instructions...</div>
@@ -96,7 +107,7 @@
         </aside>
     </main>
 
-    <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Expand Instructions">▶</button>
+    <button id="expand-instructions-floating" class="tool-btn" onclick="toggleInstructionsPane()" title="Show instructions" data-icon="chevronLeft" data-label="Instructions"></button>
 
     <!-- Exit Confirmation Modal -->
     <div id="exit-modal-backdrop" class="modal-backdrop">
@@ -107,9 +118,9 @@
                 <label id="clear-storage-label" hidden><input type="checkbox" id="clear-storage-checkbox"> Clear my saved work from this device</label>
             </div>
             <div class="modal-actions">
+                <button id="modal-cancel-btn" class="tool-btn" onclick="hideExitModal()">Cancel</button>
                 <button id="modal-download-btn" class="tool-btn" onclick="modalDownloadWork()">Download my work (.zip)</button>
                 <button id="modal-exit-btn" class="stop-btn" onclick="modalExitAnyway()">Exit</button>
-                <button id="modal-cancel-btn" class="tool-btn" onclick="hideExitModal()">Cancel</button>
             </div>
         </div>
     </div>
