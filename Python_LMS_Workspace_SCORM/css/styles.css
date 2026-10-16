@@ -171,50 +171,115 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     margin: 0;
 }
 
-/* Center Pane (Editor + Terminal Stack) */
+/* Center Pane */
 #center-pane {
     flex: 1;
     min-width: 200px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
 #editor-container {
-    flex: 1;
-    min-height: 100px;
+    flex: 1 1 0;
+    min-height: 80px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
+#editor-container > * {
+    min-height: 0;
+}
 
-#code-editor {
-    width: 100%;
-    height: 100%;
+/* Layered Editor Styles */
+.editor-wrapper {
+    position: relative;
+    flex: 1;
+    background: #1e1e1e;
     overflow: hidden;
+    display: flex;
 }
 
-/* CodeMirror customization */
-.cm-editor {
-    height: 100%;
-    background-color: #1e1e1e !important;
-    color: #d4d4d4 !important;
-}
-.cm-scroller {
-    overflow: auto;
+.line-numbers {
+    width: 45px;
+    background: #1e1e1e;
+    color: #858585;
     font-family: "Courier New", Courier, monospace;
     font-size: 14px;
     line-height: 1.5;
+    padding: 16px 4px 16px 8px;
+    text-align: right;
+    user-select: none;
+    overflow: hidden;
+    box-sizing: border-box;
+    border-right: 1px solid #333;
+    flex-shrink: 0;
 }
+
+.highlight-layer {
+    position: absolute;
+    top: 0;
+    left: 45px;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 16px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #d4d4d4;
+    background: transparent;
+    pointer-events: none;
+    white-space: pre;
+    overflow: scroll;
+    scrollbar-width: none; /* Firefox */
+    box-sizing: border-box;
+}
+.highlight-layer::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+}
+
+#code-editor {
+    position: absolute;
+    top: 0;
+    left: 45px;
+    right: 0;
+    bottom: 0;
+    width: calc(100% - 45px);
+    height: 100%;
+    background: transparent;
+    color: transparent;
+    caret-color: #f0f0f0;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 16px;
+    border: none;
+    resize: none;
+    outline: none;
+    white-space: pre;
+    overflow: auto;
+    box-sizing: border-box;
+    tab-size: 4;
+}
+
+/* Python Syntax Highlighting Token Colors */
+.py-keyword { color: #c586c0; font-weight: bold; }
+.py-builtin { color: #4ec9b0; }
+.py-string { color: #ce9178; }
+.py-comment { color: #6a9955; font-style: italic; }
+.py-number { color: #b5cea8; }
 
 #terminal-container {
     height: 200px;
-    min-height: 80px;
-    max-height: 600px;
+    flex: 0 0 auto;
+    min-height: 60px;
     background: #181818;
-    padding: 8px;
+    padding: 0;
     box-sizing: border-box;
     overflow: hidden;
+    min-width: 0;
 }
 
 /* Right Pane: Instructions */
@@ -228,21 +293,36 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     overflow-y: auto;
     flex-shrink: 0;
     user-select: text;
-    transition: width 0.2s ease;
+    transition: width 0.2s ease, min-width 0.2s ease, padding 0.2s ease;
 }
-#instructions-pane.collapsed {
-    width: 40px !important;
-    min-width: 40px !important;
-    overflow: hidden;
+body.instructions-collapsed #instructions-pane {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+    padding: 0 !important;
 }
-#instructions-pane.collapsed .instructions-header span,
-#instructions-pane.collapsed .instructions-header .instructions-actions button:not(#toggle-instructions-btn),
-#instructions-pane.collapsed #instructions-content {
+body.instructions-collapsed #instructions-splitter {
+    display: none !important;
+}
+
+/* Floating Expand Button */
+#expand-instructions-floating {
     display: none;
+    position: fixed;
+    right: 0;
+    top: 60px;
+    z-index: 100;
+    background: #2d2d2d;
+    border: 1px solid var(--border-color);
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+    padding: 8px 6px;
+    color: #fff;
+    cursor: pointer;
 }
-#instructions-pane.collapsed .instructions-header {
-    justify-content: center;
-    padding: 12px 4px;
+body.instructions-collapsed #expand-instructions-floating {
+    display: block;
 }
 
 .instructions-header {
