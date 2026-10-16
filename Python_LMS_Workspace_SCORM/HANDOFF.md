@@ -108,7 +108,7 @@ Template folder (instructor)                 Exported student package (D2L)
   * `LMSFinish`
   * legacy packages
 * **Sample assignment:** Temperature Converter. It has 7 tests worth 9 points and uses all three file roles.
-* **First D2L test (2026-10-16, exported sample lab, "View as Student", review/retake on):** the package loads from the real CDNs, Run Code and Run Tests work, a grade item was created, and work persists across close/reopen (browser autosave). **The grade item stayed empty.** Likely cause: D2L doesn't record SCORM scores in View as Student. Still to check: the results-panel line ("Score sent to D2L" vs "Practice run — not connected"), then retest with a demo/real student account.
+* **First D2L test (2026-10-16, exported sample lab, "View as Student", review/retake on):** the package loads from the real CDNs, Run Code and Run Tests work, a grade item was created, and work persists across close/reopen (browser autosave). **The grade item stayed empty.** The results panel showed **"Score sent to D2L: 67% (your best score counts)."** That means the D2L SCORM API was found and `LMSCommit` returned `true`, so the package side works. The missing grade is attributed to View as Student not saving gradebook data. **Next:** retest with a demo or real student account and confirm the grade item fills in.
 * **Possible gap:** `js/scorm.js` ignores `cmi.core.lesson_mode`. If D2L reopens a completed attempt in review mode, later score updates may be dropped.
 * **Not yet verified on real D2L grade reporting:** the sandbox had no CDN access, so tests used local copies with an xterm stub. **Next step: the instructor should run the template locally, export, upload to a D2L sandbox course, and confirm the grade item updates.**
 
@@ -129,7 +129,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
-| 2026-10-16 | Recorded the first D2L upload test (works in View as Student; no grade recorded yet). |
+| 2026-10-16 | Recorded the first D2L upload test. In View as Student, D2L accepts the score commit, but no grade is recorded (expected). |
 | 2026-10-16 | Added the instructor release zip: `dev/build_release.py`, the `release-zip` GitHub Action (`template-latest` release), a root README.md with the download link, and a download step in INSTRUCTOR_GUIDE.md. |
 | 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). Instructor set up GitHub credentials and pushed; `origin/main` now includes v2. |
 | 2026-10-16 | Confirmed the local folder matches the repo baseline (`04c44d0`). Added HANDOFF.md. |
