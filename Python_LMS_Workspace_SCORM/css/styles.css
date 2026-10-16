@@ -17,6 +17,7 @@
     --ease: cubic-bezier(.2, .8, .2, 1);
     --fast: 120ms;
     --toolbar-h: 48px;
+    --pane-header-h: 40px;  /* Files header, editor header, right panel header/tabs all line up */
 }
 
 /* ---------- Dark (default) ---------- */
@@ -448,7 +449,7 @@ body.files-collapsed #file-sidebar, body.files-collapsed #sidebar-splitter { dis
 body.files-collapsed #files-rail, body.instructions-collapsed #instructions-rail { display: flex; }
 
 .sidebar-header, .instructions-header {
-    height: 38px;
+    height: var(--pane-header-h);
     padding: 0 6px 0 14px;
     font-size: 11px;
     font-weight: 600;
@@ -879,6 +880,8 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 .role-legend { font-size: 10.5px; color: var(--text-faint); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .role-badge {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
     height: 16px;
     min-width: 16px;
     padding: 0 4px;
@@ -901,7 +904,8 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 #editor-header {
     align-items: center;
     gap: 12px;
-    padding: 6px 10px;
+    height: var(--pane-header-h);
+    padding: 0 10px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -926,8 +930,10 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 #instructor-panel { flex-direction: column; flex: 1; min-height: 0; }
 .ipanel-tabs {
     display: flex;
+    align-items: flex-end;
     gap: 2px;
-    padding: 6px 8px 0;
+    height: var(--pane-header-h);
+    padding: 0 8px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -935,13 +941,14 @@ body[data-mode="instructor"] #file-sidebar { width: 250px; }
 .ipanel-tab {
     flex: 1;
     height: 32px;
+    margin-bottom: -1px;
     border-radius: 7px 7px 0 0;
     color: var(--text-muted);
     font-size: 12.5px;
 }
 .ipanel-tab:hover { color: var(--text); background: var(--hover); }
 .ipanel-tab.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--purple); }
-.ipanel-hide { flex: 0 0 auto; align-self: center; width: 28px; height: 28px; margin: 0 0 2px 4px; }
+.ipanel-hide { flex: 0 0 auto; align-self: center; width: 28px; height: 28px; margin-left: 4px; }
 .ipanel-tab .count {
     font-size: 10.5px;
     font-weight: 600;

@@ -20,7 +20,7 @@ Priorities set by the instructor:
 | Repo | https://github.com/The-Instructor/WASM-Python-Interpreter (`main`) |
 | Project folder in repo | `Python_LMS_Workspace_SCORM/` |
 | Instructor's local copy | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-main/Python_LMS_Workspace_SCORM` (not a git repo) |
-| Git working clone | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-repo` — make changes and commit here, push `main`, then copy into the local copy |
+| Git working clone | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-repo` — make changes, commit and push `main` here (nothing is copied to the local copy) |
 | Old D2L zip (`Python_Workspace.zip`) | Instructor's own file. **Ignore it; it is not tracked** (see `.gitignore`). |
 | E2E tests | `dev/e2e/` (repo only; see the README there) |
 | Instructor download | https://github.com/The-Instructor/WASM-Python-Interpreter/releases/download/template-latest/Python_LMS_Workspace_SCORM.zip — built by `dev/build_release.py`, published by `.github/workflows/release-zip.yml` on every push to `main` that touches the template |
@@ -101,30 +101,27 @@ Template folder (instructor)                 Exported student package (D2L)
 * **Drafts:** the project autosaves to `localStorage` under the key `pyws:instructor-draft:<path>`. A banner offers "Discard draft".
 * **Export:** if the project still has the sample's id (`sample-assignment`), export generates a new id so student autosave keys don't collide between packages.
 
-## Current state
-* **Done and verified:** 43/43 automated E2E checks pass in headless Chromium against the real Pyodide 0.27.3 runtime, with a mock D2L SCORM API. They cover:
-  * instructor boot
-  * validating tests against the solution and the starter
-  * fill from solution
-  * the checklist
-  * preview
-  * export contents
-  * save/open round trip
-  * opening an exported package
-  * the student package in an iframe with the SCORM API
-  * starter scores 0%; the solution with tamper attempts scores 100%
-  * the best-score policy
-  * infinite-loop timeouts
-  * interactive input
-  * helper-module reload
-  * traceback highlighting
-  * autosave and restore
-  * `LMSFinish`
-  * legacy packages
-* **Sample assignment:** Temperature Converter. It has 7 tests worth 9 points and uses all three file roles.
-* **First D2L test (2026-10-16, exported sample lab, "View as Student", player opened in a new window, review/retake on; grade item Yes on the exported sample lab, No on a separately uploaded instructor template):** the package loads from the real CDNs, Run Code and Run Tests work, a grade item was created, and work persists across close/reopen (browser autosave). **The grade item stayed empty.** The results panel showed **"Score sent to D2L: 67% (your best score counts)."** That means the D2L SCORM API was found and `LMSCommit` returned `true`, so the package side works. The missing grade is attributed to View as Student not saving gradebook data. **Next:** retest with a demo or real student account and confirm the grade item fills in.
-* **Possible gap:** `js/scorm.js` ignores `cmi.core.lesson_mode`. If D2L reopens a completed attempt in review mode, later score updates may be dropped.
-* **Not yet verified on real D2L grade reporting:** the sandbox had no CDN access, so tests used local copies with an xterm stub. **Next step: the instructor should run the template locally, export, upload to a D2L sandbox course, and confirm the grade item updates.**
+## Current state (pick up here)
+_Status as of 2026-10-16, commit after `a6545ae`._
+
+**Working and checked by the instructor:** the sample lab in D2L (upload, Run, Run Tests, terminal, autosave, new-window player) and the new UI. Their last two UI notes (S/R/H badge letters off-center; right panel header not lining up with the editor header) are fixed: all pane headers share `--pane-header-h` (40px).
+
+**What exists now**
+* Instructor template with Instructor Mode, autograder (output / function / custom-code tests), SCORM 1.2 reporting, file roles (S/R/H), interactive `input()`, student autosave, export/save/open.
+* Linux-style terminal shell with real permissions; files created by the shell or by programs appear in the tree.
+* Light/dark theme (follows the device; System/Light/Dark menu), modern UI with outline icons, ☰ menu, Instructor/Student preview dropdown, hide/show rails for both side panels.
+* Release zip at a fixed link, rebuilt by GitHub Actions on every push to `main`.
+* Sample assignment: Temperature Converter, 7 tests worth 9 points, uses all three file roles.
+
+**D2L findings so far**
+* The exported sample lab works in D2L with the recommended settings (see INSTRUCTOR_GUIDE.md section 6). The results panel showed **"Score sent to D2L: 67%"**, so D2L's SCORM API was found and the save was accepted.
+* The grade item stayed empty under **View as Student**. This is attributed to View as Student not saving grades, not to the package.
+
+**Next steps, in order**
+1. **Instructor:** test the exported sample lab with a **real or demo student account** and confirm the D2L grade item fills in. If it doesn't, look at D2L's SCORM report for the attempt (status, score) before changing code.
+2. **Run the automated tests** (`dev/e2e/run_tests.js`). Last full run was 43/43 *before* the shell/theme/UI work. Selectors were updated since (☰ menu, mode dropdown, `.lock-icon`, label text without emoji) and 3 shell checks were added, but the suite hasn't been re-run. It needs Playwright and either local library copies or a small change to load the real CDNs (see `dev/e2e/README.md`).
+3. **Possible gap:** `js/scorm.js` ignores `cmi.core.lesson_mode`. If D2L reopens a completed attempt in review mode, later score updates may be dropped. Check during step 1 by closing and reopening the activity after scoring, then running the tests again.
+4. Ideas, not requested yet: attempt limits, per-test stdin presets for Run, saving empty folders in projects.
 
 ## Release zip
 * `dev/build_release.py` zips the **git-tracked** files of `Python_LMS_Workspace_SCORM/` with `imsmanifest.xml` at the zip root, so it is a valid SCORM package and also runs locally after unzipping. It leaves out `HANDOFF.md`, keeps the Mac `.command` executable, and writes fixed timestamps so identical sources give identical zips.
@@ -145,6 +142,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | Centered S/R/H badge letters; Files, editor and right-panel headers share one height (`--pane-header-h`). Rewrote "Current state" as a pickup point with ordered next steps. |
 | 2026-10-16 | UI feedback round: ☰ menu replaces Project dropdown, Instructor/Student preview dropdown, Publish removed from toolbar, hide/show for both side panels (incl. Instructor Mode) with edge rails, all emoji replaced by outline icons. Guide, sample instructions and E2E selectors updated. Checked in the browser (both modes, menus, panel rails, Publish tab). |
 | 2026-10-16 | Recorded the recommended D2L upload settings (new window, built-in navigation, add review/retake, grade item Yes + Highest Attempt, always latest version) in INSTRUCTOR_GUIDE.md and the in-app Publish tab. |
 | 2026-10-16 | Rewrote INSTRUCTOR_GUIDE.md: short steps, current button names, what the start script does, D2L grade-item/review-retake answers, new "Update to a new version" section. |
