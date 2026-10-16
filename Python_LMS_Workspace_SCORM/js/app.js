@@ -20,10 +20,12 @@ let selectedFiles = new Set();
 let worker = null;
 let isRunning = false;
 let markdownSource = "";
+let cmEditor = null;
+let currentFontSize = 14;
 
 // Initialize Workspace on Load
 document.addEventListener("DOMContentLoaded", async () => {
-    initEditorEvents();
+    initCodeMirrorEditor();
     await loadInstructions();
     await discoverManifestFiles();
     initSplitters();
@@ -31,103 +33,188 @@ document.addEventListener("DOMContentLoaded", async () => {
     initInstructionsTransitionListener();
 });
 
-// Setup Layered Editor Events
-function initEditorEvents() {
-    const textarea = document.getElementById('code-editor');
-    const highlightCode = document.getElementById('highlight-code');
-    const lineNumbersEl = document.getElementById('line-numbers');
+// Setup CodeMirror 5 Editor (Part 2)
+function initCodeMirrorEditor() {
+    if (!window.CodeMirror) {
+        console.error("CodeMirror failed to load from CDN.");
+        document.getElementById('editor-container').innerHTML = '<div style="color: #d12424; padding: 20px; font-family: monospace;">Error: CodeMirror editor failed to load.</div>';
+        return;
+    }
 
-    const handleInput = () => {
+    // Custom Python Hint registration
+    CodeMirror.registerHelper("hint", "pythonHint", function(cm) {
+        const cur = cm.getCursor();
+        const token = cm.getTokenAt(cur);
+        const start = token.start;
+        const end = cur.ch;
+        const line = cur.line;
+        const lineText = cm.getLine(line);
+        const search = lineText.substring(start, end);
+
+        const pythonKeywords = [
+            "False", "None", "True", "and", "as", "assert", "async", "await", "break",
+            "class", "continue", "def", "del", "elif", "else", "except", "finally",
+            "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal",
+            "not", "or", "pass", "raise", "return", "try", "while", "with", "yield"
+        ];
+        const pythonBuiltins = [
+            "print", "len", "range", "int", "str", "float", "list", "dict", "set",
+            "tuple", "open", "abs", "all", "any", "bin", "bool", "dir", "enumerate",
+            "eval", "exec", "filter", "help", "hex", "id", "input", "isinstance",
+            "map", "max", "min", "oct", "ord", "pow", "repr", "round", "sorted",
+            "sum", "type", "zip"
+        ];
+        const methods = ["append", "extend", "insert", "remove", "pop", "index", "count", "sort", "reverse", "keys", "values", "items", "get", "update", "split", "join", "strip", "replace", "find", "lower", "upper"];
+
+        let suggestions = [...pythonKeywords, ...pythonBuiltins, ...methods];
+        
+        // Anyword fallback: collect words from document
+        const docText = cm.getValue();
+        const words = docText.match(/\b[a-zA-Z_]\w*\b/g) || [];
+        suggestions = [...new Set([...suggestions, ...words])];
+
+        const filtered = suggestions.filter(item => item.startsWith(search));
+
+        return {
+            list: filtered.length > 0 ? filtered : suggestions,
+            from: CodeMirror.Pos(line, start),
+            to: CodeMirror.Pos(line, end)
+        };
+    });
+
+    cmEditor = CodeMirror.fromTextArea(document.getElementById('code-editor-textarea'), {
+        mode: "python",
+        theme: "material-darker",
+        lineNumbers: true,
+        lineWrapping: false,
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        smartIndent: true,
+        electricChars: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        styleActiveLine: true,
+        showTrailingSpace: true,
+        highlightSelectionMatches: { minChars: 2, showToken: /\w/ },
+        foldGutter: true,
+        gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+        extraKeys: {
+            "Ctrl-Space": "autocomplete",
+            "Ctrl-S": function(cm) {
+                if (activeFile && virtualFiles[activeFile] !== undefined) {
+                    virtualFiles[activeFile] = cm.getValue();
+                }
+                syncWorkerFiles();
+                showSaveIndicator();
+            },
+            "Cmd-S": function(cm) {
+                if (activeFile && virtualFiles[activeFile] !== undefined) {
+                    virtualFiles[activeFile] = cm.getValue();
+                }
+                syncWorkerFiles();
+                showSaveIndicator();
+            },
+            "Ctrl-Enter": function() { toggleExecution(); },
+            "Cmd-Enter": function() { toggleExecution(); },
+            "Ctrl-Q": function(cm) { cm.foldCode(cm.getCursor()); },
+            "Ctrl-Alt-Up": "swapLineUp",
+            "Ctrl-Alt-Down": "swapLineDown",
+            "Shift-Alt-Down": "duplicateLine",
+            "Ctrl-D": "selectNextOccurrence",
+            "Ctrl-Shift-K": "deleteLine",
+            "Ctrl-F": "findPersistent",
+            "Ctrl-H": "replace",
+            "Ctrl-G": "findNext",
+            "Shift-Ctrl-G": "findPrev",
+            "Ctrl-L": "jumpToLine",
+            "Ctrl-=": function(cm) { changeFontSize(1); },
+            "Cmd-=": function(cm) { changeFontSize(1); },
+            "Ctrl--": function(cm) { changeFontSize(-1); },
+            "Cmd--": function(cm) { changeFontSize(-1); }
+        }
+    });
+
+    // Custom Enter auto-indent/dedent logic for Python
+    cmEditor.on("keyHandled", (cm, name, event) => {
+        if (name === "Enter") {
+            const cursor = cm.getCursor();
+            const prevLine = cm.getLine(cursor.line - 1);
+            if (prevLine) {
+                const trimmed = prevLine.trim();
+                // Dedent after return, pass, break, continue, raise
+                if (/^(return|pass|break|continue|raise)\b/.test(trimmed)) {
+                    cm.indentLine(cursor.line, "subtract");
+                }
+            }
+        }
+    });
+
+    cmEditor.on("change", (cm) => {
         if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-            virtualFiles[activeFile] = textarea.value;
+            virtualFiles[activeFile] = cm.getValue();
         }
-        updateEditorDisplay();
-    };
-
-    textarea.addEventListener('input', handleInput);
-
-    textarea.addEventListener('scroll', () => {
-        highlightCode.parentElement.scrollTop = textarea.scrollTop;
-        highlightCode.parentElement.scrollLeft = textarea.scrollLeft;
-        lineNumbersEl.scrollTop = textarea.scrollTop;
+        updateStatusBar(cm);
     });
 
-    textarea.addEventListener('keydown', (e) => {
-        if (e.key === 'Tab') {
-            e.preventDefault();
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            textarea.value = textarea.value.substring(0, start) + "    " + textarea.value.substring(end);
-            textarea.selectionStart = textarea.selectionEnd = start + 4;
-            handleInput();
+    cmEditor.on("cursorActivity", (cm) => {
+        updateStatusBar(cm);
+    });
+
+    // Autocomplete on inputRead for identifiers or dot
+    cmEditor.on("inputRead", (cm, change) => {
+        if (change.origin === "+input") {
+            const text = change.text[0];
+            if (/[\w\.]/.test(text)) {
+                const cursor = cm.getCursor();
+                const token = cm.getTokenAt(cursor);
+                if (token.type !== "comment" && token.type !== "string") {
+                    if (text === "." || (text.length === 1 && /\w/.test(text))) {
+                        CodeMirror.showHint(cm, CodeMirror.hint.pythonHint, { completeSingle: false });
+                    }
+                }
+            }
         }
     });
+}
+
+function changeFontSize(delta) {
+    currentFontSize = Math.max(10, Math.min(28, currentFontSize + delta));
+    const wrapper = document.querySelector('.CodeMirror');
+    if (wrapper) {
+        wrapper.style.fontSize = `${currentFontSize}px`;
+        cmEditor.refresh();
+    }
+}
+
+function showSaveIndicator() {
+    const ind = document.getElementById('save-indicator');
+    ind.classList.add('show');
+    setTimeout(() => ind.classList.remove('show'), 1500);
+}
+
+function updateStatusBar(cm) {
+    const cursor = cm.getCursor();
+    document.getElementById('status-cursor').innerText = `Ln ${cursor.line + 1}, Col ${cursor.ch + 1}`;
+    
+    const selRange = cm.somethingSelected() ? `(${cm.getSelection().length} chars selected)` : "";
+    document.getElementById('status-selection').innerText = selRange;
 }
 
 // Centralized Content Loader
 function setEditorContent(filename) {
+    if (!cmEditor) return;
     if (filename && virtualFiles[filename] !== undefined && virtualFiles[filename] !== null) {
         activeFile = filename;
-        const textarea = document.getElementById('code-editor');
-        textarea.value = virtualFiles[filename];
-        textarea.scrollTop = 0;
-        textarea.scrollLeft = 0;
-        updateEditorDisplay();
+        cmEditor.setValue(virtualFiles[filename]);
+        cmEditor.clearHistory();
+        cmEditor.setCursor(0, 0);
     } else {
         activeFile = null;
-        const textarea = document.getElementById('code-editor');
-        textarea.value = "# Select a file...";
-        updateEditorDisplay();
+        cmEditor.setValue("# Select a file...");
+        cmEditor.clearHistory();
     }
     initFileExplorer();
-}
-
-function updateEditorDisplay() {
-    const textarea = document.getElementById('code-editor');
-    const highlightCode = document.getElementById('highlight-code');
-    const lineNumbersEl = document.getElementById('line-numbers');
-    
-    const code = textarea.value;
-    highlightCode.innerHTML = pythonHighlight(code);
-
-    const linesCount = code.split('\n').length;
-    let linesHtml = "";
-    for (let i = 1; i <= linesCount; i++) {
-        linesHtml += i + "<br>";
-    }
-    lineNumbersEl.innerHTML = linesHtml;
-}
-
-// Single-Pass Python Tokenizer / Highlighter (Fix 4)
-function pythonHighlight(text) {
-    const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const pattern = /(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b)|(\b(?:print|len|range|int|str|float|list|dict|set|tuple|open|abs|all|any|bin|bool|dir|enumerate|eval|exec|filter|help|hex|id|input|isinstance|map|max|min|oct|ord|pow|repr|round|sorted|sum|type|zip)\b)|(\b\d+\b)/g;
-    
-    let result = "";
-    let lastIndex = 0;
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-            result += escapeHtml(text.substring(lastIndex, match.index));
-        }
-        const fullMatch = match[0];
-        if (match[1]) {
-            result += `<span class="py-comment">${escapeHtml(fullMatch)}</span>`;
-        } else if (match[2]) {
-            result += `<span class="py-string">${escapeHtml(fullMatch)}</span>`;
-        } else if (match[3]) {
-            result += `<span class="py-keyword">${escapeHtml(fullMatch)}</span>`;
-        } else if (match[4]) {
-            result += `<span class="py-builtin">${escapeHtml(fullMatch)}</span>`;
-        } else if (match[5]) {
-            result += `<span class="py-number">${escapeHtml(fullMatch)}</span>`;
-        }
-        lastIndex = pattern.lastIndex;
-    }
-    if (lastIndex < text.length) {
-        result += escapeHtml(text.substring(lastIndex));
-    }
-    return result + "\n";
 }
 
 // Load Instructions from instructions.md
@@ -177,7 +264,6 @@ function initInstructionsTransitionListener() {
     pane.addEventListener('transitionend', () => {
         fitAddon.fit();
     });
-    // Fallback timeout refit
     setTimeout(() => fitAddon.fit(), 250);
 }
 
@@ -329,15 +415,15 @@ function renderTreeNode(node, parentElement, currentPath) {
 }
 
 function switchFile(filename) {
-    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null && cmEditor) {
+        virtualFiles[activeFile] = cmEditor.getValue();
     }
     setEditorContent(filename);
 }
 
 window.createNewFile = function() {
-    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null && cmEditor) {
+        virtualFiles[activeFile] = cmEditor.getValue();
     }
     const parent = getSelectedFolderContext();
     const filename = prompt(`Enter new filename ${parent ? `in ${parent}` : ''}:`);
@@ -411,8 +497,8 @@ function updateDownloadButtonState() {
 }
 
 window.downloadSelected = async function() {
-    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null && cmEditor) {
+        virtualFiles[activeFile] = cmEditor.getValue();
     }
     if (selectedFiles.size === 0) return;
     
@@ -477,6 +563,7 @@ function initSplitters() {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             fitAddon.fit();
+            if (cmEditor) cmEditor.refresh();
         };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
@@ -499,12 +586,13 @@ function initSplitters() {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             fitAddon.fit();
+            if (cmEditor) cmEditor.refresh();
         };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
     });
 
-    // Vertical splitter (resizes Terminal directly - Fix 2)
+    // Vertical splitter (resizes Terminal directly)
     const centerPane = document.getElementById('center-pane');
     const terminalContainer = document.getElementById('terminal-container');
     const verticalSplitter = document.getElementById('vertical-splitter');
@@ -521,13 +609,17 @@ function initSplitters() {
             const maxH = centerPane.clientHeight - 80 - 5;
             const clamped = Math.max(60, Math.min(newHeight, maxH));
             terminalContainer.style.height = `${clamped}px`;
-            requestAnimationFrame(() => fitAddon.fit());
+            requestAnimationFrame(() => {
+                fitAddon.fit();
+                if (cmEditor) cmEditor.refresh();
+            });
         };
         const onMouseUp = () => {
             verticalSplitter.classList.remove('dragging');
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             fitAddon.fit();
+            if (cmEditor) cmEditor.refresh();
         };
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
@@ -538,6 +630,7 @@ function initTerminalResize() {
     const terminalContainer = document.getElementById('terminal-container');
     const resizeObserver = new ResizeObserver(() => {
         fitAddon.fit();
+        if (cmEditor) cmEditor.refresh();
     });
     resizeObserver.observe(terminalContainer);
 }
@@ -561,8 +654,8 @@ function spawnWorker() {
 }
 
 function syncWorkerFiles() {
-    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null && cmEditor) {
+        virtualFiles[activeFile] = cmEditor.getValue();
     }
     if (worker) {
         worker.postMessage({ cmd: 'sync', files: virtualFiles });
