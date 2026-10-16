@@ -1,0 +1,47 @@
+# Rebuilds the instructor download on every push to main and attaches it to the
+# "template-latest" release, so this link always serves the current template:
+# https://github.com/The-Instructor/WASM-Python-Interpreter/releases/download/template-latest/Python_LMS_Workspace_SCORM.zip
+name: Release zip
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Python_LMS_Workspace_SCORM/**'
+      - 'dev/build_release.py'
+      - '.github/workflows/release-zip.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-zip
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build zip
+        run: python3 dev/build_release.py
+
+      - name: Publish to template-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: template-latest
+        run: |
+          git tag -f "$TAG"
+          git push -f origin "refs/tags/$TAG"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Python Lab Workspace (latest template)" --latest \
+              --notes "Download **Python_LMS_Workspace_SCORM.zip** below. Rebuilt automatically from \`main\`; see INSTRUCTOR_GUIDE.md inside the zip."
+          fi
+          gh release upload "$TAG" dist/Python_LMS_Workspace_SCORM.zip --clobber
+          gh release edit "$TAG" --notes "Download **Python_LMS_Workspace_SCORM.zip** below. Built from \`main\` at ${GITHUB_SHA::7} on $(date -u +%Y-%m-%d). See INSTRUCTOR_GUIDE.md inside the zip."

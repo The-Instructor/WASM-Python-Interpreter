@@ -23,6 +23,7 @@ Priorities set by the instructor:
 | Git working clone | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-repo` — make changes and commit here, push `main`, then copy into the local copy |
 | Old D2L zip (`Python_Workspace.zip`) | Instructor's own file. **Ignore it; it is not tracked** (see `.gitignore`). |
 | E2E tests | `dev/e2e/` (repo only; see the README there) |
+| Instructor download | https://github.com/The-Instructor/WASM-Python-Interpreter/releases/download/template-latest/Python_LMS_Workspace_SCORM.zip — built by `dev/build_release.py`, published by `.github/workflows/release-zip.yml` on every push to `main` that touches the template |
 
 **Rule:** the repo holds the latest *working* version. After each verified change, sync the local folder with the repo and update this file.
 
@@ -109,6 +110,12 @@ Template folder (instructor)                 Exported student package (D2L)
 * **Sample assignment:** Temperature Converter. It has 7 tests worth 9 points and uses all three file roles.
 * **Not yet verified on real D2L or a real CDN:** the sandbox had no CDN access, so tests used local copies with an xterm stub. **Next step: the instructor should run the template locally, export, upload to a D2L sandbox course, and confirm the grade item updates.**
 
+## Release zip
+* `dev/build_release.py` zips the **git-tracked** files of `Python_LMS_Workspace_SCORM/` with `imsmanifest.xml` at the zip root, so it is a valid SCORM package and also runs locally after unzipping. It leaves out `HANDOFF.md`, keeps the Mac `.command` executable, and writes fixed timestamps so identical sources give identical zips.
+* The build **fails if `imsmanifest.xml` lists a file that isn't packaged.** When you add or rename a template file, update the template manifest.
+* The Action moves the `template-latest` tag to the pushed commit and replaces the release asset (`--clobber`), so the download URL never changes.
+* Uploading this template zip to D2L gives an **instructor sandbox**: it includes Instructor Mode and `assignment/solution/`. Students should get only packages made with **Publish → Export for D2L**.
+
 ## Known limitations / ideas
 1. Client-side grading is tamper-*resistant*, not tamper-proof. A student with devtools can call `API.LMSSetValue` directly. This is documented in INSTRUCTOR_GUIDE.md, with a mitigation: also collect the downloaded zip.
 2. The replay input model assumes deterministic programs. Time-based output may differ between replays.
@@ -120,6 +127,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | Added the instructor release zip: `dev/build_release.py`, the `release-zip` GitHub Action (`template-latest` release), a root README.md with the download link, and a download step in INSTRUCTOR_GUIDE.md. |
 | 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). Instructor set up GitHub credentials and pushed; `origin/main` now includes v2. |
 | 2026-10-16 | Confirmed the local folder matches the repo baseline (`04c44d0`). Added HANDOFF.md. |
 | 2026-10-16 | **v2 architecture:** Instructor Mode, autograder (output, function and custom code tests), SCORM 1.2 reporting, file roles, interactive `input()`, student autosave, export/save/open, sample assignment, start scripts, INSTRUCTOR_GUIDE.md, E2E suite (`dev/e2e`). Pinned `marked@12.0.2`. Moved `instructions.md` to `assignment/`. |

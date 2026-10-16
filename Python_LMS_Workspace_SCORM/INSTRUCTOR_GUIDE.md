@@ -2,7 +2,10 @@
 
 Use this template to build a Python assignment, test it the way students will see it, and export a SCORM package that D2L grades automatically.
 
-## 1. Open the workspace
+## 1. Get and open the workspace
+Download the latest template:
+**[Python_LMS_Workspace_SCORM.zip](https://github.com/The-Instructor/WASM-Python-Interpreter/releases/download/template-latest/Python_LMS_Workspace_SCORM.zip)**. Unzip it anywhere. Don't use GitHub's **Code → Download ZIP** button: it wraps the files in extra folders.
+
 The workspace has to run from a small local web server, not by double-clicking `index.html`.
 
 * **Mac:** double-click `Start-Instructor-Workspace-Mac.command`. The first time, macOS may block it: right-click the file, choose **Open**, then confirm.
