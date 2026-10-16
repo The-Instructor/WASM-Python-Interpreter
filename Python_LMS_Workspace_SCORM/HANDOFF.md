@@ -19,7 +19,8 @@ Priorities set by the instructor:
 |---|---|
 | Repo | https://github.com/The-Instructor/WASM-Python-Interpreter (`main`) |
 | Project folder in repo | `Python_LMS_Workspace_SCORM/` |
-| Instructor's local copy | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-main/Python_LMS_Workspace_SCORM` |
+| Instructor's local copy | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-main/Python_LMS_Workspace_SCORM` (not a git repo) |
+| Git working clone | `~/Documents/CSC1019/WASM_Python_Workspace/WASM-Python-Interpreter-repo` — make changes and commit here, push `main`, then copy into the local copy |
 | Old D2L zip (`Python_Workspace.zip`) | Instructor's own file. **Ignore it; it is not tracked** (see `.gitignore`). |
 | E2E tests | `dev/e2e/` (repo only; see the README there) |
 
@@ -119,5 +120,6 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). **`origin/main` is still at `04c44d0` until the instructor pushes** — this machine has no GitHub credentials. |
 | 2026-10-16 | Confirmed the local folder matches the repo baseline (`04c44d0`). Added HANDOFF.md. |
 | 2026-10-16 | **v2 architecture:** Instructor Mode, autograder (output, function and custom code tests), SCORM 1.2 reporting, file roles, interactive `input()`, student autosave, export/save/open, sample assignment, start scripts, INSTRUCTOR_GUIDE.md, E2E suite (`dev/e2e`). Pinned `marked@12.0.2`. Moved `instructions.md` to `assignment/`. |
