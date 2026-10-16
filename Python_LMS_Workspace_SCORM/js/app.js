@@ -1,9 +1,3 @@
-import { EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
-import { EditorView, keymap, lineNumbers } from "https://esm.sh/@codemirror/view@6.26.2";
-import { defaultKeymap } from "https://esm.sh/@codemirror/commands@6.3.3";
-import { python } from "https://esm.sh/@codemirror/lang-python@6.1.3";
-import { oneDark } from "https://esm.sh/@codemirror/theme-one-dark@6.1.2";
-
 // Initialize xterm.js Terminal UI with FitAddon
 const term = new Terminal({
     cursorBlink: true,
@@ -20,46 +14,120 @@ fitAddon.fit();
 term.writeln('\x1b[33mSystem: Loading background worker runtime...\x1b[0m\r\n');
 
 // State Management
-let virtualFiles = {}; // path -> content or null (for folders)
+let virtualFiles = {};
 let activeFile = null;
 let selectedFiles = new Set();
 let worker = null;
 let isRunning = false;
-let editorView = null;
 let markdownSource = "";
 
 // Initialize Workspace on Load
 document.addEventListener("DOMContentLoaded", async () => {
-    initEditor();
+    initEditorEvents();
     await loadInstructions();
     await discoverManifestFiles();
     initSplitters();
     initTerminalResize();
+    initInstructionsTransitionListener();
 });
 
-// Setup CodeMirror 6 Editor
-function initEditor() {
-    const updateListener = EditorView.updateListener.of((update) => {
-        if (update.docChanged && activeFile && virtualFiles[activeFile] !== undefined) {
-            virtualFiles[activeFile] = update.state.doc.toString();
+// Setup Layered Editor Events
+function initEditorEvents() {
+    const textarea = document.getElementById('code-editor');
+    const highlightCode = document.getElementById('highlight-code');
+    const lineNumbersEl = document.getElementById('line-numbers');
+
+    const handleInput = () => {
+        if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
+            virtualFiles[activeFile] = textarea.value;
+        }
+        updateEditorDisplay();
+    };
+
+    textarea.addEventListener('input', handleInput);
+
+    textarea.addEventListener('scroll', () => {
+        highlightCode.parentElement.scrollTop = textarea.scrollTop;
+        highlightCode.parentElement.scrollLeft = textarea.scrollLeft;
+        lineNumbersEl.scrollTop = textarea.scrollTop;
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = textarea.value.substring(0, start) + "    " + textarea.value.substring(end);
+            textarea.selectionStart = textarea.selectionEnd = start + 4;
+            handleInput();
         }
     });
+}
 
-    const startState = EditorState.create({
-        doc: "# Select a file from the sidebar...\n",
-        extensions: [
-            lineNumbers(),
-            python(),
-            oneDark,
-            keymap.of(defaultKeymap),
-            updateListener
-        ]
-    });
+// Centralized Content Loader
+function setEditorContent(filename) {
+    if (filename && virtualFiles[filename] !== undefined && virtualFiles[filename] !== null) {
+        activeFile = filename;
+        const textarea = document.getElementById('code-editor');
+        textarea.value = virtualFiles[filename];
+        textarea.scrollTop = 0;
+        textarea.scrollLeft = 0;
+        updateEditorDisplay();
+    } else {
+        activeFile = null;
+        const textarea = document.getElementById('code-editor');
+        textarea.value = "# Select a file...";
+        updateEditorDisplay();
+    }
+    initFileExplorer();
+}
 
-    editorView = new EditorView({
-        state: startState,
-        parent: document.getElementById('code-editor')
-    });
+function updateEditorDisplay() {
+    const textarea = document.getElementById('code-editor');
+    const highlightCode = document.getElementById('highlight-code');
+    const lineNumbersEl = document.getElementById('line-numbers');
+    
+    const code = textarea.value;
+    highlightCode.innerHTML = pythonHighlight(code);
+
+    const linesCount = code.split('\n').length;
+    let linesHtml = "";
+    for (let i = 1; i <= linesCount; i++) {
+        linesHtml += i + "<br>";
+    }
+    lineNumbersEl.innerHTML = linesHtml;
+}
+
+// Single-Pass Python Tokenizer / Highlighter (Fix 4)
+function pythonHighlight(text) {
+    const escapeHtml = (str) => str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const pattern = /(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b)|(\b(?:print|len|range|int|str|float|list|dict|set|tuple|open|abs|all|any|bin|bool|dir|enumerate|eval|exec|filter|help|hex|id|input|isinstance|map|max|min|oct|ord|pow|repr|round|sorted|sum|type|zip)\b)|(\b\d+\b)/g;
+    
+    let result = "";
+    let lastIndex = 0;
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            result += escapeHtml(text.substring(lastIndex, match.index));
+        }
+        const fullMatch = match[0];
+        if (match[1]) {
+            result += `<span class="py-comment">${escapeHtml(fullMatch)}</span>`;
+        } else if (match[2]) {
+            result += `<span class="py-string">${escapeHtml(fullMatch)}</span>`;
+        } else if (match[3]) {
+            result += `<span class="py-keyword">${escapeHtml(fullMatch)}</span>`;
+        } else if (match[4]) {
+            result += `<span class="py-builtin">${escapeHtml(fullMatch)}</span>`;
+        } else if (match[5]) {
+            result += `<span class="py-number">${escapeHtml(fullMatch)}</span>`;
+        }
+        lastIndex = pattern.lastIndex;
+    }
+    if (lastIndex < text.length) {
+        result += escapeHtml(text.substring(lastIndex));
+    }
+    return result + "\n";
 }
 
 // Load Instructions from instructions.md
@@ -75,7 +143,6 @@ async function loadInstructions() {
     }
 }
 
-// Open instructions in a new tab with proper styling
 window.openInstructionsNewTab = function() {
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -96,19 +163,23 @@ window.openInstructionsNewTab = function() {
 </html>`;
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
+    window.open(url, '_blank');
     setTimeout(() => URL.revokeObjectURL(url), 10000);
 };
 
 window.toggleInstructionsPane = function() {
-    const pane = document.getElementById('instructions-pane');
-    const btn = document.getElementById('toggle-instructions-btn');
-    pane.classList.toggle('collapsed');
-    const isCollapsed = pane.classList.contains('collapsed');
-    btn.innerText = isCollapsed ? '▶' : '◀';
-    btn.setAttribute('aria-label', isCollapsed ? 'Expand instructions' : 'Collapse instructions');
+    document.body.classList.toggle('instructions-collapsed');
     setTimeout(() => fitAddon.fit(), 210);
 };
+
+function initInstructionsTransitionListener() {
+    const pane = document.getElementById('instructions-pane');
+    pane.addEventListener('transitionend', () => {
+        fitAddon.fit();
+    });
+    // Fallback timeout refit
+    setTimeout(() => fitAddon.fit(), 250);
+}
 
 // Auto-discover starter files declared in imsmanifest.xml
 async function discoverManifestFiles() {
@@ -146,16 +217,15 @@ async function discoverManifestFiles() {
         }
 
         const fileNames = Object.keys(virtualFiles).filter(k => virtualFiles[k] !== null);
-        activeFile = fileNames.length > 0 ? fileNames[0] : null;
+        const initialFile = fileNames.length > 0 ? fileNames[0] : null;
         
-        initFileExplorer();
+        setEditorContent(initialFile);
         spawnWorker();
 
     } catch (err) {
         console.error("Manifest discovery failed:", err);
         virtualFiles["main.py"] = `# Error loading manifest\nprint("Hello World")`;
-        activeFile = "main.py";
-        initFileExplorer();
+        setEditorContent("main.py");
         spawnWorker();
     }
 }
@@ -167,7 +237,7 @@ function ensureParentFolders(path) {
     for (let p of parts) {
         current = current ? `${current}/${p}` : p;
         if (virtualFiles[current] === undefined) {
-            virtualFiles[current] = null; // null indicates folder
+            virtualFiles[current] = null;
         }
     }
 }
@@ -177,7 +247,6 @@ function initFileExplorer() {
     const listEl = document.getElementById('file-list');
     listEl.innerHTML = '';
     
-    // Build tree structure
     const tree = {};
     Object.keys(virtualFiles).sort().forEach(path => {
         const parts = path.split('/');
@@ -192,19 +261,6 @@ function initFileExplorer() {
 
     renderTreeNode(tree, listEl, "");
     updateDownloadButtonState();
-
-    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
-        const doc = editorView.state.doc.toString();
-        if (doc !== virtualFiles[activeFile]) {
-            editorView.dispatch({
-                changes: { from: 0, to: doc.length, insert: virtualFiles[activeFile] }
-            });
-        }
-    } else {
-        editorView.dispatch({
-            changes: { from: 0, to: editorView.state.doc.length, insert: "# Select a file..." }
-        });
-    }
 }
 
 function renderTreeNode(node, parentElement, currentPath) {
@@ -225,7 +281,6 @@ function renderTreeNode(node, parentElement, currentPath) {
         rowContent.className = 'file-row-content';
         rowContent.innerText = (isFolder ? '📁 ' : '📄 ') + name;
 
-        // Click row handler (Requirement D1: entire row clickable)
         li.onclick = (e) => {
             e.stopPropagation();
             const isMeta = e.metaKey || e.ctrlKey;
@@ -274,19 +329,16 @@ function renderTreeNode(node, parentElement, currentPath) {
 }
 
 function switchFile(filename) {
-    if (virtualFiles[filename] !== null) {
-        activeFile = filename;
-        initFileExplorer();
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
+        virtualFiles[activeFile] = document.getElementById('code-editor').value;
     }
+    setEditorContent(filename);
 }
 
-window.updateActiveFileContent = function() {
-    if (activeFile && virtualFiles[activeFile] !== undefined) {
-        virtualFiles[activeFile] = editorView.state.doc.toString();
-    }
-};
-
 window.createNewFile = function() {
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
+        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    }
     const parent = getSelectedFolderContext();
     const filename = prompt(`Enter new filename ${parent ? `in ${parent}` : ''}:`);
     if (!filename) return;
@@ -298,22 +350,24 @@ window.createNewFile = function() {
         return;
     }
 
-    virtualFiles[fullPath] = `# New file: ${cleanName}\n`;
-    switchFile(fullPath);
+    virtualFiles[fullPath] = "";
+    setEditorContent(fullPath);
     syncWorkerFiles();
 };
 
 window.createNewFolder = function() {
-    const foldername = prompt("Enter new folder name:");
+    const parent = getSelectedFolderContext();
+    const foldername = prompt(`Enter new folder name ${parent ? `in ${parent}` : ''}:`);
     if (!foldername) return;
     const cleanName = foldername.trim();
+    const fullPath = parent ? `${parent}/${cleanName}` : cleanName;
     
-    if (virtualFiles[cleanName] !== undefined) {
+    if (virtualFiles[fullPath] !== undefined) {
         alert("A file or folder with that name already exists.");
         return;
     }
 
-    virtualFiles[cleanName] = null; // folder marker
+    virtualFiles[fullPath] = null;
     initFileExplorer();
     syncWorkerFiles();
 };
@@ -331,6 +385,7 @@ function getSelectedFolderContext() {
 
 function deleteItem(path, isFolder) {
     if (confirm(`Are you sure you want to delete ${path}?`)) {
+        const isDeletingActive = (activeFile === path || (activeFile && activeFile.startsWith(path + '/')));
         const keys = Object.keys(virtualFiles);
         keys.forEach(k => {
             if (k === path || k.startsWith(path + '/')) {
@@ -338,11 +393,14 @@ function deleteItem(path, isFolder) {
             }
         });
         selectedFiles.delete(path);
-        if (activeFile === path || (activeFile && activeFile.startsWith(path + '/'))) {
+        
+        if (isDeletingActive) {
             const remaining = Object.keys(virtualFiles).filter(k => virtualFiles[k] !== null);
-            activeFile = remaining.length > 0 ? remaining[0] : null;
+            const nextFile = remaining.length > 0 ? remaining[0] : null;
+            setEditorContent(nextFile);
+        } else {
+            initFileExplorer();
         }
-        initFileExplorer();
         syncWorkerFiles();
     }
 }
@@ -353,12 +411,14 @@ function updateDownloadButtonState() {
 }
 
 window.downloadSelected = async function() {
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
+        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    }
     if (selectedFiles.size === 0) return;
     
     if (selectedFiles.size === 1) {
         const path = Array.from(selectedFiles)[0];
         if (virtualFiles[path] !== null) {
-            // Single file download
             const blob = new Blob([virtualFiles[path]], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -370,13 +430,11 @@ window.downloadSelected = async function() {
         }
     }
 
-    // Multiple files or folder -> Zip via JSZip
     const zip = new JSZip();
     selectedFiles.forEach(path => {
         if (virtualFiles[path] !== null) {
             zip.file(path, virtualFiles[path]);
         } else {
-            // Folder export
             Object.keys(virtualFiles).forEach(k => {
                 if ((k === path || k.startsWith(path + '/')) && virtualFiles[k] !== null) {
                     zip.file(k, virtualFiles[k]);
@@ -446,22 +504,24 @@ function initSplitters() {
         document.addEventListener('mouseup', onMouseUp);
     });
 
-    const editorContainer = document.getElementById('editor-container');
+    // Vertical splitter (resizes Terminal directly - Fix 2)
+    const centerPane = document.getElementById('center-pane');
+    const terminalContainer = document.getElementById('terminal-container');
     const verticalSplitter = document.getElementById('vertical-splitter');
 
     verticalSplitter.addEventListener('mousedown', (e) => {
         e.preventDefault();
         verticalSplitter.classList.add('dragging');
         const startY = e.clientY;
-        const startEditorHeight = editorContainer.clientHeight;
+        const startTerminalHeight = terminalContainer.clientHeight;
 
         const onMouseMove = (e) => {
             const deltaY = e.clientY - startY;
-            const newHeight = startEditorHeight + deltaY;
-            if (newHeight > 80) {
-                editorContainer.style.flex = 'none';
-                editorContainer.style.height = `${newHeight}px`;
-            }
+            const newHeight = startTerminalHeight - deltaY;
+            const maxH = centerPane.clientHeight - 80 - 5;
+            const clamped = Math.max(60, Math.min(newHeight, maxH));
+            terminalContainer.style.height = `${clamped}px`;
+            requestAnimationFrame(() => fitAddon.fit());
         };
         const onMouseUp = () => {
             verticalSplitter.classList.remove('dragging');
@@ -475,10 +535,11 @@ function initSplitters() {
 }
 
 function initTerminalResize() {
+    const terminalContainer = document.getElementById('terminal-container');
     const resizeObserver = new ResizeObserver(() => {
         fitAddon.fit();
     });
-    resizeObserver.observe(document.getElementById('terminal-container'));
+    resizeObserver.observe(terminalContainer);
 }
 
 function spawnWorker() {
@@ -500,16 +561,24 @@ function spawnWorker() {
 }
 
 function syncWorkerFiles() {
+    if (activeFile && virtualFiles[activeFile] !== undefined && virtualFiles[activeFile] !== null) {
+        virtualFiles[activeFile] = document.getElementById('code-editor').value;
+    }
     if (worker) {
         worker.postMessage({ cmd: 'sync', files: virtualFiles });
     }
 }
 
 window.toggleExecution = function() {
-    window.updateActiveFileContent();
-    if (!activeFile) {
-        alert("No active file selected to run.");
-        return;
+    syncWorkerFiles();
+    let targetFile = activeFile;
+    if (!targetFile || !targetFile.endsWith('.py')) {
+        if (virtualFiles["main.py"] !== undefined) {
+            targetFile = "main.py";
+        } else {
+            term.writeln('\x1b[31mSelect a .py file to run\x1b[0m\r\n');
+            return;
+        }
     }
 
     if (isRunning) {
@@ -519,9 +588,8 @@ window.toggleExecution = function() {
         spawnWorker();
     } else {
         setButtonState(true);
-        term.writeln(`\x1b[36m$ python3 ${activeFile}\x1b[0m`);
-        syncWorkerFiles();
-        worker.postMessage({ cmd: 'run', entrypoint: activeFile });
+        term.writeln(`\x1b[36m$ python3 ${targetFile}\x1b[0m`);
+        worker.postMessage({ cmd: 'run', entrypoint: targetFile });
     }
 };
 
