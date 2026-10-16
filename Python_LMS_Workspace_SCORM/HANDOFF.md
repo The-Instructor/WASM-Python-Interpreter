@@ -120,6 +120,6 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
-| 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). **`origin/main` is still at `04c44d0` until the instructor pushes** — this machine has no GitHub credentials. |
+| 2026-10-16 | Cloned the repo to `WASM-Python-Interpreter-repo` and applied the unpushed v2 commits from `Claude outputs/WASM-Python-Interpreter-unpushed.bundle` (contents match the local copy). Instructor set up GitHub credentials and pushed; `origin/main` now includes v2. |
 | 2026-10-16 | Confirmed the local folder matches the repo baseline (`04c44d0`). Added HANDOFF.md. |
 | 2026-10-16 | **v2 architecture:** Instructor Mode, autograder (output, function and custom code tests), SCORM 1.2 reporting, file roles, interactive `input()`, student autosave, export/save/open, sample assignment, start scripts, INSTRUCTOR_GUIDE.md, E2E suite (`dev/e2e`). Pinned `marked@12.0.2`. Moved `instructions.md` to `assignment/`. |
