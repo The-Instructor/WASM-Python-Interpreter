@@ -27,6 +27,8 @@ Priorities set by the instructor:
 
 **Rule:** the repo holds the latest *working* version. After each verified change, push to `main` and update this file. **Don't copy files into the instructor's local folder** (instructor's request, 2026-10-16); they get the template from the release download link.
 
+**Docs standard:** INSTRUCTOR_GUIDE.md and README.md are for non-developer instructors. Keep them to short numbered steps, use the button names exactly as shown in the UI, and explain any file, folder or command in one line. Update the guide whenever a visible label or workflow changes.
+
 ## Architecture
 ```
 Template folder (instructor)                 Exported student package (D2L)
@@ -141,6 +143,7 @@ Template folder (instructor)                 Exported student package (D2L)
 ## Change log
 | Date | Change |
 |---|---|
+| 2026-10-16 | Rewrote INSTRUCTOR_GUIDE.md: short steps, current button names, what the start script does, D2L grade-item/review-retake answers, new "Update to a new version" section. |
 | 2026-10-16 | Workflow: changes go to the repo only; the instructor's local folder is no longer synced. |
 | 2026-10-16 | **Terminal shell** (Linux-style commands with permissions; runtime files now appear in the tree), **light/dark theme** following the device with a System/Light/Dark menu, and a **modern UI**: token-based styles, SVG icons, Project dropdown, segmented switches, softer shadows, quieter file tree. Verified in the browser: shell + protections in Instructor, Preview and an exported package under a mock SCORM API; tests on solution 7/7; interactive input; score commit. E2E suite updated (Project menu, lock icon, 3 shell checks) but **not re-run** (needs the local CDN mirror described in dev/e2e). |
 | 2026-10-16 | Recorded the first D2L upload test. In View as Student, D2L accepts the score commit, but no grade is recorded (expected). |
